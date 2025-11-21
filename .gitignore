@@ -34,3 +34,7 @@ Thumbs.db
 # Build output
 dist/
 build/
+
+# Built binaries
+singbox-web-config
+singbox-web-config-test
