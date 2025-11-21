@@ -1,0 +1,50 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="hero">
+    <h1>Welcome to Sing-Box Config Manager</h1>
+    <p class="subtitle">Simple web-based configuration management for sing-box</p>
+</div>
+
+<div class="cards">
+    <div class="card">
+        <h2>Route Rules</h2>
+        <p>Manage your sing-box routing rules with an intuitive interface</p>
+        <a href="/rules" class="button">Manage Rules</a>
+    </div>
+
+    <div class="card">
+        <h2>Auto-Generated Types</h2>
+        <p>Types automatically synchronized with sing-box upstream</p>
+        <div class="metadata">
+            {{if .Data.Metadata}}
+            <p><strong>Sing-Box Commit:</strong> {{.Data.Metadata.SingBoxCommit}}</p>
+            <p><strong>Branch:</strong> {{.Data.Metadata.SingBoxBranch}}</p>
+            <p><strong>Types Generated:</strong> {{.Data.Metadata.TypesGenerated}}</p>
+            <p><strong>Generated:</strong> {{.Data.Metadata.Timestamp.Format "2006-01-02 15:04:05"}}</p>
+            {{end}}
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Coming Soon</h2>
+        <ul>
+            <li>DNS Configuration</li>
+            <li>Inbound/Outbound Management</li>
+            <li>Configuration Templates</li>
+            <li>Import/Export</li>
+            <li>Validation & Testing</li>
+        </ul>
+    </div>
+</div>
+
+<div class="info-section">
+    <h2>Features</h2>
+    <ul>
+        <li><strong>Type Safety:</strong> Automatically generated types from sing-box source ensure correctness</li>
+        <li><strong>User Friendly:</strong> No need to manually edit JSON files</li>
+        <li><strong>HTMX Powered:</strong> Dynamic interface without heavy JavaScript</li>
+        <li><strong>Always Up-to-Date:</strong> Generator keeps types synchronized with sing-box</li>
+    </ul>
+</div>
+{{end}}
