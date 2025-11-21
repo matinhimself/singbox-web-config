@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/matinhimself/singbox-web-config/internal/types"
 )
@@ -462,4 +463,31 @@ func (s *Server) handleConfigRestore(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("HX-Redirect", "/rules")
 	w.WriteHeader(http.StatusOK)
+}
+
+func (s *Server) handleConfigCreateBackup(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	name := r.FormValue("name")
+	if name == "" {
+		name = fmt.Sprintf("Manual backup %s", time.Now().Format("2006-01-02 15:04:05"))
+	}
+
+	description := r.FormValue("description")
+	if description == "" {
+		description = "Manual backup created by user"
+	}
+
+	if err := s.configManager.CreateBackupWithName(name, description); err != nil {
+		log.Printf("Error creating backup: %v", err)
+		http.Error(w, fmt.Sprintf("Failed to create backup: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Return updated backup list
+	w.Header().Set("HX-Trigger", "backupCreated")
+	s.handleConfigBackups(w, r)
 }
