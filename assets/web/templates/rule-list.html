@@ -1,0 +1,30 @@
+{{define "rule-list.html"}}
+{{if .Rules}}
+<div class="rules-container">
+    {{range $index, $rule := .Rules}}
+    <div class="rule-card" id="rule-{{$index}}">
+        <div class="rule-header">
+            <span class="rule-number">#{{add $index 1}}</span>
+            <div class="rule-actions">
+                <button class="button button-small button-danger"
+                        hx-post="/api/rules/delete?index={{$index}}"
+                        hx-target="#rules-list"
+                        hx-swap="innerHTML"
+                        hx-confirm="Are you sure you want to delete this rule?">
+                    Delete
+                </button>
+            </div>
+        </div>
+        <div class="rule-content">
+            <pre class="rule-json">{{marshal $rule}}</pre>
+        </div>
+    </div>
+    {{end}}
+</div>
+{{else}}
+<div class="empty-state">
+    <p>No rules configured yet.</p>
+    <p>Click "Add Rule" to create your first routing rule.</p>
+</div>
+{{end}}
+{{end}}

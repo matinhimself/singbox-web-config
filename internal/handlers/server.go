@@ -1,11 +1,12 @@
 package handlers
 
 import (
+	"embed"
 	"fmt"
 	"html/template"
+	"io/fs"
 	"log"
 	"net/http"
-	"path/filepath"
 
 	"github.com/matinhimself/singbox-web-config/internal/config"
 	"github.com/matinhimself/singbox-web-config/internal/forms"
@@ -22,10 +23,12 @@ type Server struct {
 	serviceManager *service.Manager
 	formBuilder    *forms.Builder
 	watcher        *watcher.Watcher
+	templatesFS    embed.FS
+	staticFS       embed.FS
 }
 
 // NewServer creates a new HTTP server
-func NewServer(addr string, configPath string, singboxService string) (*Server, error) {
+func NewServer(addr string, configPath string, singboxService string, templatesFS, staticFS embed.FS) (*Server, error) {
 	// Create config manager
 	configManager, err := config.NewManager(configPath)
 	if err != nil {
@@ -51,6 +54,8 @@ func NewServer(addr string, configPath string, singboxService string) (*Server, 
 		configManager:  configManager,
 		serviceManager: serviceManager,
 		formBuilder:    formBuilder,
+		templatesFS:    templatesFS,
+		staticFS:       staticFS,
 	}
 
 	// Load templates
@@ -76,13 +81,13 @@ func NewServer(addr string, configPath string, singboxService string) (*Server, 
 	return s, nil
 }
 
-// loadTemplates loads all HTML templates
+// loadTemplates loads all HTML templates from embedded files
 func (s *Server) loadTemplates() error {
-	// Parse all templates in the web/templates directory with custom functions
-	templatesPath := filepath.Join("web", "templates", "*.html")
-	tmpl, err := template.New("").Funcs(templateFuncMap()).ParseGlob(templatesPath)
+	// Use ParseFS to parse templates from embedded filesystem
+	// This properly handles nested template definitions
+	tmpl, err := template.New("").Funcs(templateFuncMap()).ParseFS(s.templatesFS, "web/templates/*.html")
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to parse templates: %w", err)
 	}
 
 	s.templates = tmpl
@@ -91,9 +96,14 @@ func (s *Server) loadTemplates() error {
 
 // setupRoutes configures all HTTP routes
 func (s *Server) setupRoutes() {
-	// Static files
-	fs := http.FileServer(http.Dir("web/static"))
-	s.mux.Handle("/static/", http.StripPrefix("/static/", fs))
+	// Static files from embedded filesystem
+	staticSubFS, err := fs.Sub(s.staticFS, "web/static")
+	if err != nil {
+		log.Printf("Warning: failed to load static files: %v", err)
+	} else {
+		fileServer := http.FileServer(http.FS(staticSubFS))
+		s.mux.Handle("/static/", http.StripPrefix("/static/", fileServer))
+	}
 
 	// Page routes
 	s.mux.HandleFunc("/", s.handleIndex)
