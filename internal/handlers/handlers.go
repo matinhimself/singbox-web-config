@@ -95,6 +95,46 @@ func (s *Server) handleRulesList(w http.ResponseWriter, r *http.Request) {
 // handleRuleForm handles the HTMX endpoint for rule forms
 func (s *Server) handleRuleForm(w http.ResponseWriter, r *http.Request) {
 	ruleType := r.URL.Query().Get("type")
+	indexStr := r.URL.Query().Get("index")
+	editMode := indexStr != ""
+
+	var ruleData map[string]interface{}
+	var ruleIndex int
+
+	if editMode {
+		// Get existing rule for editing
+		index, err := strconv.Atoi(indexStr)
+		if err != nil {
+			http.Error(w, "Invalid index", http.StatusBadRequest)
+			return
+		}
+		ruleIndex = index
+
+		rules, err := s.configManager.GetRules()
+		if err != nil {
+			log.Printf("Error getting rules: %v", err)
+			http.Error(w, "Failed to get rules", http.StatusInternalServerError)
+			return
+		}
+
+		if index < 0 || index >= len(rules) {
+			http.Error(w, "Index out of range", http.StatusBadRequest)
+			return
+		}
+
+		// Convert rule to map
+		if rule, ok := rules[index].(map[string]interface{}); ok {
+			ruleData = rule
+			// Determine rule type from the rule data if not specified
+			if ruleType == "" {
+				ruleType = s.determineRuleType(rule)
+			}
+		} else {
+			http.Error(w, "Invalid rule format", http.StatusInternalServerError)
+			return
+		}
+	}
+
 	if ruleType == "" {
 		ruleType = "RawDefaultRule" // Default type
 	}
@@ -106,15 +146,98 @@ func (s *Server) handleRuleForm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Populate form with existing values if editing
+	if editMode && ruleData != nil {
+		s.formBuilder.PopulateFormValues(formDef, ruleData)
+	}
+
+	// Get outbounds for dropdown
+	outbounds, err := s.getOutboundTags()
+	if err != nil {
+		log.Printf("Warning: failed to get outbounds: %v", err)
+	}
+
+	// Update Outbound field to be a select with outbound options
+	for i := range formDef.Fields {
+		if formDef.Fields[i].JSONTag == "outbound" {
+			// If it's an array field (for DNS rules), keep it as array but still show options
+			if formDef.Fields[i].Type != "array" {
+				formDef.Fields[i].Type = "select"
+			}
+			formDef.Fields[i].Options = outbounds
+			break
+		}
+	}
+
 	data := map[string]interface{}{
 		"Form":      formDef,
 		"RuleTypes": s.formBuilder.GetAvailableRuleTypes(),
+		"EditMode":  editMode,
+		"RuleIndex": ruleIndex,
 	}
 
 	if err := s.renderTemplate(w, "rule-form.html", data); err != nil {
 		log.Printf("Error rendering template: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
+}
+
+// determineRuleType tries to determine the rule type from rule data
+func (s *Server) determineRuleType(rule map[string]interface{}) string {
+	// Check for logical rule
+	if _, hasMode := rule["mode"]; hasMode {
+		if _, hasRules := rule["rules"]; hasRules {
+			// Check if it's DNS or routing
+			if _, hasServer := rule["server"]; hasServer {
+				return "RawLogicalDNSRule"
+			}
+			return "RawLogicalRule"
+		}
+	}
+
+	// Check for rule set
+	if _, hasType := rule["type"]; hasType {
+		if ruleType, ok := rule["type"].(string); ok {
+			if ruleType == "local" {
+				return "LocalRuleSet"
+			}
+			if ruleType == "remote" {
+				return "RemoteRuleSet"
+			}
+		}
+	}
+
+	// Check if it's a DNS rule
+	if _, hasServer := rule["server"]; hasServer {
+		return "RawDefaultDNSRule"
+	}
+
+	// Default to regular rule
+	return "RawDefaultRule"
+}
+
+// getOutboundTags retrieves all outbound tags from the config
+func (s *Server) getOutboundTags() ([]string, error) {
+	config, err := s.configManager.LoadConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	var tags []string
+	for _, outbound := range config.Outbounds {
+		if outboundMap, ok := outbound.(map[string]interface{}); ok {
+			if tag, ok := outboundMap["tag"].(string); ok {
+				tags = append(tags, tag)
+			}
+		}
+	}
+
+	// Add some common default outbounds
+	if len(tags) == 0 {
+		tags = []string{"direct", "block", "dns-out"}
+	}
+
+	return tags, nil
 }
 
 // handleRuleCreate handles creating a new rule
@@ -247,6 +370,77 @@ func (s *Server) handleRuleUpdate(w http.ResponseWriter, r *http.Request) {
 
 	// Update config
 	if err := s.configManager.UpdateRules(rules); err != nil {
+		log.Printf("Error updating rules: %v", err)
+		http.Error(w, "Failed to save rules", http.StatusInternalServerError)
+		return
+	}
+
+	// Reload service
+	if err := s.serviceManager.Reload(); err != nil {
+		log.Printf("Warning: failed to reload service: %v", err)
+	}
+
+	// Return updated rules list
+	s.handleRulesList(w, r)
+}
+
+// handleRuleReorder handles reordering rules via drag and drop
+func (s *Server) handleRuleReorder(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Failed to parse form", http.StatusBadRequest)
+		return
+	}
+
+	fromStr := r.FormValue("from")
+	toStr := r.FormValue("to")
+
+	fromIndex, err := strconv.Atoi(fromStr)
+	if err != nil {
+		http.Error(w, "Invalid from index", http.StatusBadRequest)
+		return
+	}
+
+	toIndex, err := strconv.Atoi(toStr)
+	if err != nil {
+		http.Error(w, "Invalid to index", http.StatusBadRequest)
+		return
+	}
+
+	// Get current rules
+	rules, err := s.configManager.GetRules()
+	if err != nil {
+		log.Printf("Error getting rules: %v", err)
+		http.Error(w, "Failed to get rules", http.StatusInternalServerError)
+		return
+	}
+
+	// Check bounds
+	if fromIndex < 0 || fromIndex >= len(rules) || toIndex < 0 || toIndex >= len(rules) {
+		http.Error(w, "Index out of range", http.StatusBadRequest)
+		return
+	}
+
+	// Reorder rules
+	rule := rules[fromIndex]
+	rules = append(rules[:fromIndex], rules[fromIndex+1:]...)
+
+	// Insert at new position
+	if toIndex > fromIndex {
+		toIndex--
+	}
+
+	newRules := make([]interface{}, 0, len(rules)+1)
+	newRules = append(newRules, rules[:toIndex]...)
+	newRules = append(newRules, rule)
+	newRules = append(newRules, rules[toIndex:]...)
+
+	// Update config
+	if err := s.configManager.UpdateRules(newRules); err != nil {
 		log.Printf("Error updating rules: %v", err)
 		http.Error(w, "Failed to save rules", http.StatusInternalServerError)
 		return

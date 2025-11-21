@@ -116,6 +116,7 @@ func (s *Server) setupRoutes() {
 	s.mux.HandleFunc("/api/rules/create", s.handleRuleCreate)
 	s.mux.HandleFunc("/api/rules/delete", s.handleRuleDelete)
 	s.mux.HandleFunc("/api/rules/update", s.handleRuleUpdate)
+	s.mux.HandleFunc("/api/rules/reorder", s.handleRuleReorder)
 
 	// API routes for service management
 	s.mux.HandleFunc("/api/service/status", s.handleServiceStatus)
