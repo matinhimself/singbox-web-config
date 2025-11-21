@@ -1,6 +1,6 @@
 module github.com/matinhimself/singbox-web-config
 
-go 1.24.7
+go 1.25
 
 require github.com/fsnotify/fsnotify v1.7.0
 
