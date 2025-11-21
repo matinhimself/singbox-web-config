@@ -1,0 +1,76 @@
+{{define "rule-form.html"}}
+<div class="modal-overlay" id="rule-form-modal">
+    <div class="modal">
+        <div class="modal-header">
+            <h2>{{.Form.Title}}</h2>
+            <button class="close-button" onclick="document.getElementById('rule-form-modal').remove()">×</button>
+        </div>
+
+        <form hx-post="/api/rules/create" hx-target="#rules-list" hx-swap="innerHTML" class="rule-form">
+            <div class="form-group">
+                <label for="rule_type">Rule Type</label>
+                <select name="rule_type" id="rule_type"
+                        hx-get="/api/rules/form"
+                        hx-target="#rule-form-modal"
+                        hx-swap="outerHTML"
+                        hx-include="[name='rule_type']">
+                    {{range .RuleTypes}}
+                    <option value="{{.}}" {{if eq . $.Form.Name}}selected{{end}}>{{.}}</option>
+                    {{end}}
+                </select>
+            </div>
+
+            {{range .Form.Fields}}
+            <div class="form-group">
+                <label for="{{.JSONTag}}">
+                    {{.Label}}
+                    {{if .Required}}<span class="required">*</span>{{end}}
+                </label>
+
+                {{if eq .Type "checkbox"}}
+                    <input type="checkbox"
+                           name="{{.JSONTag}}"
+                           id="{{.JSONTag}}">
+                {{else if eq .Type "select"}}
+                    <select name="{{.JSONTag}}" id="{{.JSONTag}}">
+                        <option value="">-- Select --</option>
+                        {{range .Options}}
+                        <option value="{{.}}">{{.}}</option>
+                        {{end}}
+                    </select>
+                {{else if eq .Type "textarea"}}
+                    <textarea name="{{.JSONTag}}"
+                              id="{{.JSONTag}}"
+                              rows="3"
+                              placeholder="{{.Placeholder}}"></textarea>
+                {{else if eq .Type "array"}}
+                    <input type="text"
+                           name="{{.JSONTag}}[]"
+                           id="{{.JSONTag}}"
+                           placeholder="{{if .Placeholder}}{{.Placeholder}}{{else}}Comma-separated values{{end}}">
+                {{else if eq .Type "number"}}
+                    <input type="number"
+                           name="{{.JSONTag}}"
+                           id="{{.JSONTag}}"
+                           placeholder="{{.Placeholder}}">
+                {{else}}
+                    <input type="text"
+                           name="{{.JSONTag}}"
+                           id="{{.JSONTag}}"
+                           placeholder="{{.Placeholder}}">
+                {{end}}
+
+                {{if .Description}}
+                <small class="help-text">{{.Description}}</small>
+                {{end}}
+            </div>
+            {{end}}
+
+            <div class="form-actions">
+                <button type="submit" class="button button-primary">Create Rule</button>
+                <button type="button" class="button" onclick="document.getElementById('rule-form-modal').remove()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+{{end}}

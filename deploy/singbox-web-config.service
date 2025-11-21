@@ -1,0 +1,34 @@
+[Unit]
+Description=Sing-Box Web Config Manager
+Documentation=https://github.com/matinhimself/singbox-web-config
+After=network.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/usr/local/bin/singbox-web-config
+ExecStart=/usr/local/bin/singbox-web-config/singbox-web-config-server \
+    -addr 0.0.0.0:8080 \
+    -config /etc/sing-box/config.json \
+    -service sing-box
+
+# Restart settings
+Restart=on-failure
+RestartSec=5s
+
+# Security settings
+NoNewPrivileges=false
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/etc/sing-box
+ReadWritePaths=/var/log/singbox-web-config
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=singbox-web-config
+
+[Install]
+WantedBy=multi-user.target
