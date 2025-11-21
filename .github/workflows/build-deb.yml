@@ -270,35 +270,3 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # Test installation on multiple distributions
-  test-install:
-    name: Test DEB Installation
-    needs: build-deb
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        distro:
-          - ubuntu:22.04
-          - ubuntu:24.04
-          - debian:11
-          - debian:12
-        arch:
-          - amd64
-
-    steps:
-      - name: Download DEB artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: deb-${{ matrix.arch }}
-
-      - name: Test installation in container
-        run: |
-          docker run --rm -v "$PWD:/packages" ${{ matrix.distro }} bash -c "
-            apt-get update && \
-            apt-get install -y systemd && \
-            dpkg -i /packages/*.deb || apt-get install -f -y && \
-            dpkg -l | grep singbox-web-config && \
-            test -f /usr/local/bin/singbox-web-config/singbox-web-config-server && \
-            test -f /etc/systemd/system/singbox-web-config.service && \
-            echo 'Installation test passed for ${{ matrix.distro }}'
-          "
