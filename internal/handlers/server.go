@@ -108,6 +108,7 @@ func (s *Server) setupRoutes() {
 	// Page routes
 	s.mux.HandleFunc("/", s.handleIndex)
 	s.mux.HandleFunc("/rules", s.handleRulesPage)
+	s.mux.HandleFunc("/connections", s.handleConnectionsPage)
 	s.mux.HandleFunc("/service", s.handleServicePage)
 
 	// API routes for rules (HTMX endpoints)
@@ -130,6 +131,10 @@ func (s *Server) setupRoutes() {
 	s.mux.HandleFunc("/api/config/backups", s.handleConfigBackups)
 	s.mux.HandleFunc("/api/config/restore", s.handleConfigRestore)
 	s.mux.HandleFunc("/api/config/create-backup", s.handleConfigCreateBackup)
+
+	// WebSocket and API routes for connections
+	s.mux.HandleFunc("/ws/connections", s.handleConnectionsWebSocket)
+	s.mux.HandleFunc("/api/connections/create-rule", s.handleConnectionToRule)
 }
 
 // Start starts the HTTP server

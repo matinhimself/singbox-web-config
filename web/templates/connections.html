@@ -1,0 +1,199 @@
+{{define "connections.html"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Title}} - Sing-Box Config Manager</title>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <a href="/">Sing-Box Config Manager</a>
+            </div>
+            <div class="nav-menu">
+                <a href="/" class="nav-item">Home</a>
+                <a href="/rules" class="nav-item">Route Rules</a>
+                <a href="/connections" class="nav-item">Connections</a>
+                <a href="/service" class="nav-item">Service</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container">
+        <div class="page-header">
+            <h1>Live Connections</h1>
+            <p>Monitor and manage your sing-box connections in real-time</p>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="connections-stats">
+            <div class="stat-card">
+                <div class="stat-label">Active Connections</div>
+                <div class="stat-value" id="stat-count">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Upload Total</div>
+                <div class="stat-value" id="stat-upload">0 B</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Download Total</div>
+                <div class="stat-value" id="stat-download">0 B</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Memory</div>
+                <div class="stat-value" id="stat-memory">0 B</div>
+            </div>
+        </div>
+
+        <!-- Filters and Controls -->
+        <div class="connections-toolbar">
+            <div class="toolbar-section">
+                <input type="text" id="search-input" class="search-input" placeholder="Search connections...">
+
+                <select id="filter-network" class="filter-select">
+                    <option value="">All Networks</option>
+                    <option value="tcp">TCP</option>
+                    <option value="udp">UDP</option>
+                </select>
+
+                <select id="filter-source" class="filter-select">
+                    <option value="">All Sources</option>
+                </select>
+
+                <select id="filter-chain" class="filter-select">
+                    <option value="">All Chains</option>
+                </select>
+
+                <button class="button button-small" id="clear-filters">Clear Filters</button>
+            </div>
+            <div class="toolbar-section">
+                <select id="sort-by" class="filter-select">
+                    <option value="start-desc">Newest First</option>
+                    <option value="start-asc">Oldest First</option>
+                    <option value="download-desc">Download (High to Low)</option>
+                    <option value="download-asc">Download (Low to High)</option>
+                    <option value="upload-desc">Upload (High to Low)</option>
+                    <option value="upload-asc">Upload (Low to High)</option>
+                    <option value="source">Source IP</option>
+                    <option value="destination">Destination</option>
+                </select>
+                <span class="connection-status" id="ws-status">Connecting...</span>
+            </div>
+        </div>
+
+        <!-- Connections Table -->
+        <div class="section">
+            <div class="connections-table-wrapper">
+                <table class="connections-table">
+                    <thead>
+                        <tr>
+                            <th>Source</th>
+                            <th>Destination</th>
+                            <th>Network</th>
+                            <th>Host/Domain</th>
+                            <th>Chains</th>
+                            <th>Upload</th>
+                            <th>Download</th>
+                            <th>Duration</th>
+                            <th>Rule</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="connections-tbody">
+                        <tr class="empty-state-row">
+                            <td colspan="10">
+                                <div class="loading">Waiting for connections...</div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>Sing-Box Web Config Manager - Simple configuration management for sing-box</p>
+        </div>
+    </footer>
+
+    <!-- Rule Creation Modal -->
+    <div id="rule-modal" class="modal-overlay" style="display: none;">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Create Rule from Connection</h2>
+                <button class="close-button" onclick="closeRuleModal()">&times;</button>
+            </div>
+            <div class="rule-form">
+                <p class="help-text">Select which properties to include in the new rule:</p>
+
+                <div class="rule-selector-group">
+                    <label class="rule-selector-item">
+                        <input type="checkbox" id="rule-source-ip" class="rule-checkbox">
+                        <div class="rule-selector-label">
+                            <strong>Source IP</strong>
+                            <span id="rule-source-ip-value" class="rule-value"></span>
+                        </div>
+                    </label>
+
+                    <label class="rule-selector-item">
+                        <input type="checkbox" id="rule-destination-ip" class="rule-checkbox">
+                        <div class="rule-selector-label">
+                            <strong>Destination IP</strong>
+                            <span id="rule-destination-ip-value" class="rule-value"></span>
+                        </div>
+                    </label>
+
+                    <label class="rule-selector-item">
+                        <input type="checkbox" id="rule-destination-port" class="rule-checkbox">
+                        <div class="rule-selector-label">
+                            <strong>Destination Port</strong>
+                            <span id="rule-destination-port-value" class="rule-value"></span>
+                        </div>
+                    </label>
+
+                    <label class="rule-selector-item">
+                        <input type="checkbox" id="rule-network" class="rule-checkbox">
+                        <div class="rule-selector-label">
+                            <strong>Network Protocol</strong>
+                            <span id="rule-network-value" class="rule-value"></span>
+                        </div>
+                    </label>
+
+                    <label class="rule-selector-item">
+                        <input type="checkbox" id="rule-domain" class="rule-checkbox">
+                        <div class="rule-selector-label">
+                            <strong>Domain/Host</strong>
+                            <span id="rule-domain-value" class="rule-value"></span>
+                        </div>
+                    </label>
+
+                    <div class="form-group">
+                        <label for="rule-outbound"><strong>Route to Outbound <span class="required">*</span></strong></label>
+                        <select id="rule-outbound" class="form-control" required>
+                            <option value="">Select outbound...</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="rule-preview">
+                    <h3>Rule Preview</h3>
+                    <pre id="rule-preview-json">{}</pre>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="button button-primary" onclick="createRuleFromConnection()">Create Rule</button>
+                    <button type="button" class="button" onclick="closeRuleModal()">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/connections.js"></script>
+</body>
+</html>
+{{end}}
