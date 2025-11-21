@@ -1,0 +1,304 @@
+name: Build DEB Packages
+
+on:
+  push:
+    branches:
+      - main
+      - 'release/**'
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  GO_VERSION: '1.25'
+
+jobs:
+  build-deb:
+    name: Build DEB Package
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+            goarch: amd64
+          - arch: arm64
+            goarch: arm64
+          - arch: armhf
+            goarch: arm
+            goarm: 7
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Get version
+        id: version
+        run: |
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+          else
+            VERSION="0.0.0-dev.$(git rev-parse --short HEAD)"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION"
+
+      - name: Install dependencies
+        run: |
+          go mod download
+          go mod verify
+
+      - name: Build binary
+        env:
+          CGO_ENABLED: 0
+          GOOS: linux
+          GOARCH: ${{ matrix.goarch }}
+          GOARM: ${{ matrix.goarm }}
+        run: |
+          go build -v -trimpath \
+            -ldflags="-s -w -X main.Version=${{ steps.version.outputs.version }}" \
+            -o singbox-web-config-server \
+            ./cmd/server/main.go
+
+      - name: Prepare DEB package structure
+        run: |
+          PKG_DIR="singbox-web-config_${{ steps.version.outputs.version }}_${{ matrix.arch }}"
+          mkdir -p "${PKG_DIR}/DEBIAN"
+          mkdir -p "${PKG_DIR}/usr/local/bin/singbox-web-config"
+          mkdir -p "${PKG_DIR}/usr/local/bin/singbox-web-config/web"
+          mkdir -p "${PKG_DIR}/etc/systemd/system"
+          mkdir -p "${PKG_DIR}/usr/share/doc/singbox-web-config"
+
+          # Copy binary
+          cp singbox-web-config-server "${PKG_DIR}/usr/local/bin/singbox-web-config/"
+          chmod +x "${PKG_DIR}/usr/local/bin/singbox-web-config/singbox-web-config-server"
+
+          # Copy web assets
+          cp -r web/* "${PKG_DIR}/usr/local/bin/singbox-web-config/web/"
+
+          # Copy systemd service
+          cp deploy/singbox-web-config.service "${PKG_DIR}/etc/systemd/system/"
+
+          # Copy documentation
+          cp README.md "${PKG_DIR}/usr/share/doc/singbox-web-config/"
+          cp INSTALL.md "${PKG_DIR}/usr/share/doc/singbox-web-config/"
+
+          # Create control file
+          cat > "${PKG_DIR}/DEBIAN/control" <<EOF
+          Package: singbox-web-config
+          Version: ${{ steps.version.outputs.version }}
+          Section: net
+          Priority: optional
+          Architecture: ${{ matrix.arch }}
+          Maintainer: Matin <matin@example.com>
+          Homepage: https://github.com/matinhimself/singbox-web-config
+          Description: Web-based configuration manager for sing-box
+           A simple web UI configuration manager for sing-box, starting with
+           route rules management. Features automatic type generation, clean
+           responsive interface using HTMX, and type-safe configurations.
+          Depends: systemd
+          EOF
+
+          # Create postinst script
+          cat > "${PKG_DIR}/DEBIAN/postinst" <<'EOF'
+          #!/bin/bash
+          set -e
+
+          # Create backup directory if it doesn't exist
+          mkdir -p /etc/sing-box/backups
+          chmod 755 /etc/sing-box/backups
+
+          # Create log directory
+          mkdir -p /var/log/singbox-web-config
+          chmod 755 /var/log/singbox-web-config
+
+          # Reload systemd daemon
+          systemctl daemon-reload
+
+          echo "Sing-Box Web Config Manager installed successfully!"
+          echo ""
+          echo "To enable and start the service:"
+          echo "  sudo systemctl enable singbox-web-config"
+          echo "  sudo systemctl start singbox-web-config"
+          echo ""
+          echo "The web interface will be available at http://0.0.0.0:8080"
+          echo ""
+          echo "Documentation: /usr/share/doc/singbox-web-config/"
+          echo ""
+
+          exit 0
+          EOF
+          chmod +x "${PKG_DIR}/DEBIAN/postinst"
+
+          # Create prerm script
+          cat > "${PKG_DIR}/DEBIAN/prerm" <<'EOF'
+          #!/bin/bash
+          set -e
+
+          # Stop service if running
+          if systemctl is-active --quiet singbox-web-config; then
+              systemctl stop singbox-web-config
+          fi
+
+          # Disable service if enabled
+          if systemctl is-enabled --quiet singbox-web-config; then
+              systemctl disable singbox-web-config
+          fi
+
+          exit 0
+          EOF
+          chmod +x "${PKG_DIR}/DEBIAN/prerm"
+
+          # Create postrm script
+          cat > "${PKG_DIR}/DEBIAN/postrm" <<'EOF'
+          #!/bin/bash
+          set -e
+
+          if [ "$1" = "purge" ]; then
+              # Remove log directory on purge
+              rm -rf /var/log/singbox-web-config
+
+              echo "Sing-Box Web Config Manager removed."
+              echo "Note: Configuration files in /etc/sing-box/ were preserved."
+          fi
+
+          # Reload systemd daemon
+          systemctl daemon-reload
+
+          exit 0
+          EOF
+          chmod +x "${PKG_DIR}/DEBIAN/postrm"
+
+          echo "Package structure created: ${PKG_DIR}"
+
+      - name: Build DEB package
+        run: |
+          PKG_DIR="singbox-web-config_${{ steps.version.outputs.version }}_${{ matrix.arch }}"
+          dpkg-deb --build --root-owner-group "${PKG_DIR}"
+
+          # Calculate checksums
+          sha256sum "${PKG_DIR}.deb" > "${PKG_DIR}.deb.sha256"
+          md5sum "${PKG_DIR}.deb" > "${PKG_DIR}.deb.md5"
+
+      - name: Upload DEB package as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deb-${{ matrix.arch }}
+          path: |
+            singbox-web-config_*.deb
+            singbox-web-config_*.deb.sha256
+            singbox-web-config_*.deb.md5
+          retention-days: 30
+
+  create-release:
+    name: Create Release
+    needs: build-deb
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare release files
+        run: |
+          mkdir -p release
+          find artifacts -type f -name "*.deb*" -exec cp {} release/ \;
+          ls -lah release/
+
+      - name: Get version
+        id: version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Release v${{ steps.version.outputs.version }}
+          draft: false
+          prerelease: false
+          files: release/*
+          body: |
+            ## Sing-Box Web Config Manager v${{ steps.version.outputs.version }}
+
+            ### Installation
+
+            Download the appropriate .deb package for your architecture:
+            - **amd64**: For 64-bit x86 systems (most common)
+            - **arm64**: For 64-bit ARM systems (e.g., Raspberry Pi 4, AWS Graviton)
+            - **armhf**: For 32-bit ARM systems (e.g., older Raspberry Pi)
+
+            Install the package:
+            ```bash
+            sudo dpkg -i singbox-web-config_${{ steps.version.outputs.version }}_<arch>.deb
+            sudo apt-get install -f  # Install dependencies if needed
+            ```
+
+            Enable and start the service:
+            ```bash
+            sudo systemctl enable singbox-web-config
+            sudo systemctl start singbox-web-config
+            ```
+
+            Access the web interface at http://localhost:8080
+
+            ### Verification
+
+            Verify the package integrity using checksums:
+            ```bash
+            sha256sum -c singbox-web-config_${{ steps.version.outputs.version }}_<arch>.deb.sha256
+            ```
+
+            ### What's Changed
+
+            See the [CHANGELOG](https://github.com/matinhimself/singbox-web-config/commits/v${{ steps.version.outputs.version }}) for details.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Test installation on multiple distributions
+  test-install:
+    name: Test DEB Installation
+    needs: build-deb
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        distro:
+          - ubuntu:22.04
+          - ubuntu:24.04
+          - debian:11
+          - debian:12
+        arch:
+          - amd64
+
+    steps:
+      - name: Download DEB artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: deb-${{ matrix.arch }}
+
+      - name: Test installation in container
+        run: |
+          docker run --rm -v "$PWD:/packages" ${{ matrix.distro }} bash -c "
+            apt-get update && \
+            apt-get install -y systemd && \
+            dpkg -i /packages/*.deb || apt-get install -f -y && \
+            dpkg -l | grep singbox-web-config && \
+            test -f /usr/local/bin/singbox-web-config/singbox-web-config-server && \
+            test -f /etc/systemd/system/singbox-web-config.service && \
+            echo 'Installation test passed for ${{ matrix.distro }}'
+          "
