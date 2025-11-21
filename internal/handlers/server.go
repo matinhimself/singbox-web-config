@@ -32,6 +32,13 @@ func NewServer(addr string, configPath string, singboxService string) (*Server, 
 		return nil, fmt.Errorf("failed to create config manager: %w", err)
 	}
 
+	// Create initial backup if config exists
+	if err := configManager.CreateBackupWithName("Initial backup", "Automatic backup created on server startup"); err != nil {
+		log.Printf("Warning: failed to create initial backup: %v", err)
+	} else {
+		log.Println("Created initial backup on startup")
+	}
+
 	// Create service manager
 	serviceManager := service.NewManager(singboxService)
 
@@ -111,6 +118,7 @@ func (s *Server) setupRoutes() {
 	s.mux.HandleFunc("/api/config/export", s.handleConfigExport)
 	s.mux.HandleFunc("/api/config/backups", s.handleConfigBackups)
 	s.mux.HandleFunc("/api/config/restore", s.handleConfigRestore)
+	s.mux.HandleFunc("/api/config/create-backup", s.handleConfigCreateBackup)
 }
 
 // Start starts the HTTP server
