@@ -32,6 +32,8 @@ type FormField struct {
 	ArrayType   string // For array fields
 	Options     []string
 	Description string
+	Value       interface{}   // Single value for non-array fields
+	Values      []string      // Multiple values for array fields
 }
 
 // FormDefinition represents a complete form
@@ -250,5 +252,39 @@ func (b *Builder) GetAvailableRuleTypes() []string {
 		"RawLogicalDNSRule",
 		"LocalRuleSet",
 		"RemoteRuleSet",
+	}
+}
+
+// PopulateFormValues populates form fields with values from a rule
+func (b *Builder) PopulateFormValues(formDef *FormDefinition, ruleData map[string]interface{}) {
+	for i := range formDef.Fields {
+		field := &formDef.Fields[i]
+
+		// Get value from rule data
+		if val, ok := ruleData[field.JSONTag]; ok && val != nil {
+			if field.Type == FieldTypeArray {
+				// Handle array fields
+				switch v := val.(type) {
+				case []interface{}:
+					field.Values = make([]string, len(v))
+					for j, item := range v {
+						field.Values[j] = fmt.Sprintf("%v", item)
+					}
+				case []string:
+					field.Values = v
+				default:
+					// Single value, convert to array
+					field.Values = []string{fmt.Sprintf("%v", val)}
+				}
+			} else if field.Type == FieldTypeCheckbox {
+				// Handle boolean fields
+				if boolVal, ok := val.(bool); ok {
+					field.Value = boolVal
+				}
+			} else {
+				// Handle regular fields
+				field.Value = fmt.Sprintf("%v", val)
+			}
+		}
 	}
 }

@@ -6,14 +6,23 @@
             <button class="close-button" onclick="document.getElementById('rule-form-modal').remove()">×</button>
         </div>
 
-        <form hx-post="/api/rules/create" hx-target="#rules-list" hx-swap="innerHTML" class="rule-form">
+        <form hx-post="{{if .EditMode}}/api/rules/update{{else}}/api/rules/create{{end}}"
+              hx-target="#rules-list"
+              hx-swap="innerHTML"
+              class="rule-form"
+              onsubmit="closeModalOnSuccess(event)">
+            {{if .EditMode}}
+            <input type="hidden" name="index" value="{{.RuleIndex}}">
+            {{end}}
+
             <div class="form-group">
                 <label for="rule_type">Rule Type</label>
                 <select name="rule_type" id="rule_type"
-                        hx-get="/api/rules/form"
+                        hx-get="/api/rules/form{{if .EditMode}}?index={{.RuleIndex}}{{end}}"
                         hx-target="#rule-form-modal"
                         hx-swap="outerHTML"
-                        hx-include="[name='rule_type']">
+                        hx-include="[name='rule_type']"
+                        {{if .EditMode}}disabled{{end}}>
                     {{range .RuleTypes}}
                     <option value="{{.}}" {{if eq . $.Form.Name}}selected{{end}}>{{.}}</option>
                     {{end}}
@@ -30,33 +39,71 @@
                 {{if eq .Type "checkbox"}}
                     <input type="checkbox"
                            name="{{.JSONTag}}"
-                           id="{{.JSONTag}}">
+                           id="{{.JSONTag}}"
+                           {{if .Value}}checked{{end}}>
                 {{else if eq .Type "select"}}
                     <select name="{{.JSONTag}}" id="{{.JSONTag}}">
                         <option value="">-- Select --</option>
                         {{range .Options}}
-                        <option value="{{.}}">{{.}}</option>
+                        <option value="{{.}}" {{if eq . $.Value}}selected{{end}}>{{.}}</option>
                         {{end}}
                     </select>
                 {{else if eq .Type "textarea"}}
                     <textarea name="{{.JSONTag}}"
                               id="{{.JSONTag}}"
                               rows="3"
-                              placeholder="{{.Placeholder}}"></textarea>
+                              placeholder="{{.Placeholder}}">{{.Value}}</textarea>
                 {{else if eq .Type "array"}}
-                    <input type="text"
-                           name="{{.JSONTag}}[]"
-                           id="{{.JSONTag}}"
-                           placeholder="{{if .Placeholder}}{{.Placeholder}}{{else}}Comma-separated values{{end}}">
+                    <div class="array-field-container" id="array-{{.JSONTag}}">
+                        {{if .Values}}
+                            {{range .Values}}
+                            <div class="array-field-item">
+                                {{if $.Options}}
+                                <select name="{{$.JSONTag}}[]">
+                                    <option value="">-- Select --</option>
+                                    {{range $.Options}}
+                                    <option value="{{.}}" {{if eq . $}}selected{{end}}>{{.}}</option>
+                                    {{end}}
+                                </select>
+                                {{else}}
+                                <input type="text"
+                                       name="{{$.JSONTag}}[]"
+                                       value="{{.}}"
+                                       placeholder="{{if $.Placeholder}}{{$.Placeholder}}{{else}}Enter value{{end}}">
+                                {{end}}
+                                <button type="button" class="button button-small button-danger" onclick="removeArrayField(this)">-</button>
+                            </div>
+                            {{end}}
+                        {{else}}
+                            <div class="array-field-item">
+                                {{if .Options}}
+                                <select name="{{.JSONTag}}[]">
+                                    <option value="">-- Select --</option>
+                                    {{range .Options}}
+                                    <option value="{{.}}">{{.}}</option>
+                                    {{end}}
+                                </select>
+                                {{else}}
+                                <input type="text"
+                                       name="{{.JSONTag}}[]"
+                                       placeholder="{{if .Placeholder}}{{.Placeholder}}{{else}}Enter value{{end}}">
+                                {{end}}
+                                <button type="button" class="button button-small button-danger" onclick="removeArrayField(this)">-</button>
+                            </div>
+                        {{end}}
+                    </div>
+                    <button type="button" class="button button-small" onclick="addArrayField('array-{{.JSONTag}}', '{{.JSONTag}}', '{{if .Placeholder}}{{.Placeholder}}{{else}}Enter value{{end}}', {{if .Options}}true{{else}}false{{end}}, {{if .Options}}[{{range $i, $opt := .Options}}{{if $i}},{{end}}'{{$opt}}'{{end}}]{{else}}[]{{end}})">+ Add</button>
                 {{else if eq .Type "number"}}
                     <input type="number"
                            name="{{.JSONTag}}"
                            id="{{.JSONTag}}"
+                           value="{{.Value}}"
                            placeholder="{{.Placeholder}}">
                 {{else}}
                     <input type="text"
                            name="{{.JSONTag}}"
                            id="{{.JSONTag}}"
+                           value="{{.Value}}"
                            placeholder="{{.Placeholder}}">
                 {{end}}
 
@@ -67,10 +114,54 @@
             {{end}}
 
             <div class="form-actions">
-                <button type="submit" class="button button-primary">Create Rule</button>
+                <button type="submit" class="button button-primary">{{if .EditMode}}Update Rule{{else}}Create Rule{{end}}</button>
                 <button type="button" class="button" onclick="document.getElementById('rule-form-modal').remove()">Cancel</button>
             </div>
         </form>
     </div>
 </div>
+
+<script>
+function addArrayField(containerId, fieldName, placeholder, hasOptions, options) {
+    const container = document.getElementById(containerId);
+    const newItem = document.createElement('div');
+    newItem.className = 'array-field-item';
+
+    if (hasOptions && options && options.length > 0) {
+        let selectHTML = `<select name="${fieldName}[]">`;
+        selectHTML += '<option value="">-- Select --</option>';
+        options.forEach(opt => {
+            selectHTML += `<option value="${opt}">${opt}</option>`;
+        });
+        selectHTML += '</select>';
+        newItem.innerHTML = selectHTML + `
+            <button type="button" class="button button-small button-danger" onclick="removeArrayField(this)">-</button>
+        `;
+    } else {
+        newItem.innerHTML = `
+            <input type="text" name="${fieldName}[]" placeholder="${placeholder}">
+            <button type="button" class="button button-small button-danger" onclick="removeArrayField(this)">-</button>
+        `;
+    }
+
+    container.appendChild(newItem);
+}
+
+function removeArrayField(button) {
+    const container = button.parentElement.parentElement;
+    if (container.children.length > 1) {
+        button.parentElement.remove();
+    }
+}
+
+function closeModalOnSuccess(event) {
+    // The modal will be removed by HTMX after successful submission
+    setTimeout(() => {
+        const modal = document.getElementById('rule-form-modal');
+        if (modal) {
+            modal.remove();
+        }
+    }, 500);
+}
+</script>
 {{end}}
