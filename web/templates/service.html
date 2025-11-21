@@ -1,0 +1,28 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="page-header">
+    <h1>Service Management</h1>
+    <p>Control the sing-box service</p>
+</div>
+
+<div class="section">
+    <div id="service-status" hx-get="/api/service/status" hx-trigger="load, every 5s">
+        <div class="loading">Loading service status...</div>
+    </div>
+</div>
+
+<div class="section">
+    <h2>Service Logs</h2>
+    <div id="service-logs" hx-get="/api/service/logs" hx-trigger="load">
+        <div class="loading">Loading logs...</div>
+    </div>
+</div>
+
+<div class="section">
+    <h2>Configuration Backups</h2>
+    <div id="config-backups" hx-get="/api/config/backups" hx-trigger="load">
+        <div class="loading">Loading backups...</div>
+    </div>
+</div>
+{{end}}

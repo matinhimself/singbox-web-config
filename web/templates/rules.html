@@ -7,22 +7,14 @@
 </div>
 
 <div class="toolbar">
-    <button class="button button-primary">+ Add Rule</button>
-    <button class="button">Import</button>
-    <button class="button">Export</button>
-</div>
-
-<div class="section">
-    <h2>Available Rule Types</h2>
-    <div class="rule-types">
-        {{range .Data.RuleTypes}}
-        <div class="rule-type-card">
-            <h3>{{.DisplayName}}</h3>
-            <p>{{.Description}}</p>
-            <code>{{.Name}}</code>
-        </div>
-        {{end}}
-    </div>
+    <button class="button button-primary"
+            hx-get="/api/rules/form"
+            hx-target="body"
+            hx-swap="beforeend">
+        + Add Rule
+    </button>
+    <a href="/api/config/export" class="button" download>Export</a>
+    <a href="/service" class="button">Manage Service</a>
 </div>
 
 <div class="section">

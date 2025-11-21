@@ -1,0 +1,23 @@
+{{define "config-backups.html"}}
+<div class="backups-container">
+    {{if .Backups}}
+    <div class="backups-list">
+        {{range .Backups}}
+        <div class="backup-item">
+            <span class="backup-name">{{.}}</span>
+            <form hx-post="/api/config/restore" hx-confirm="Are you sure you want to restore this backup? Current config will be backed up first.">
+                <input type="hidden" name="backup" value="{{.}}">
+                <button type="submit" class="button button-small">Restore</button>
+            </form>
+        </div>
+        {{end}}
+    </div>
+    {{else}}
+    <p class="empty-state">No backups available</p>
+    {{end}}
+
+    <div class="backup-actions">
+        <a href="/api/config/export" class="button button-primary" download>Export Current Config</a>
+    </div>
+</div>
+{{end}}
