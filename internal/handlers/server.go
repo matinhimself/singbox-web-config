@@ -108,6 +108,7 @@ func (s *Server) setupRoutes() {
 	// Page routes
 	s.mux.HandleFunc("/", s.handleIndex)
 	s.mux.HandleFunc("/rules", s.handleRulesPage)
+	s.mux.HandleFunc("/rule-actions", s.handleRuleActionsPage)
 	s.mux.HandleFunc("/connections", s.handleConnectionsPage)
 	s.mux.HandleFunc("/service", s.handleServicePage)
 
@@ -118,6 +119,13 @@ func (s *Server) setupRoutes() {
 	s.mux.HandleFunc("/api/rules/delete", s.handleRuleDelete)
 	s.mux.HandleFunc("/api/rules/update", s.handleRuleUpdate)
 	s.mux.HandleFunc("/api/rules/reorder", s.handleRuleReorder)
+
+	// API routes for rule actions (HTMX endpoints)
+	s.mux.HandleFunc("/api/rule-actions", s.handleRuleActionsList)
+	s.mux.HandleFunc("/api/rule-actions/form", s.handleRuleActionForm)
+	s.mux.HandleFunc("/api/rule-actions/create", s.handleRuleActionCreate)
+	s.mux.HandleFunc("/api/rule-actions/update", s.handleRuleActionUpdate)
+	s.mux.HandleFunc("/api/rule-actions/delete", s.handleRuleActionDelete)
 
 	// API routes for service management
 	s.mux.HandleFunc("/api/service/status", s.handleServiceStatus)

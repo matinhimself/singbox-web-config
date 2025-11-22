@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/matinhimself/singbox-web-config/internal/config"
 	"github.com/matinhimself/singbox-web-config/internal/types"
 )
 
@@ -684,4 +685,447 @@ func (s *Server) handleConfigCreateBackup(w http.ResponseWriter, r *http.Request
 	// Return updated backup list
 	w.Header().Set("HX-Trigger", "backupCreated")
 	s.handleConfigBackups(w, r)
+}
+
+// Rule Actions Management
+
+type RuleActionData struct {
+	Type                      string
+	Outbound                  string
+	Sniffer                   []string
+	Timeout                   uint32
+	Server                    string
+	Strategy                  string
+	DisableCache              bool
+	RewriteTTL                *uint32
+	ClientSubnet              *string
+	Method                    string
+	NoDrop                    bool
+	OverrideAddress           string
+	OverridePort              uint16
+	NetworkStrategy           *string
+	FallbackDelay             uint32
+	UDPDisableDomainUnmapping bool
+	UDPConnect                bool
+	UDPTimeout                uint32
+	TLSFragment               bool
+	TLSFragmentFallbackDelay  uint32
+	TLSRecordFragment         bool
+	Config                    map[string]interface{}
+}
+
+// handleRuleActionsPage handles the rule actions management page
+func (s *Server) handleRuleActionsPage(w http.ResponseWriter, r *http.Request) {
+	data := PageData{
+		Title: "Rule Actions",
+		Data:  map[string]interface{}{},
+	}
+
+	if err := s.renderTemplate(w, "rule-actions.html", data); err != nil {
+		log.Printf("Error rendering template: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
+}
+
+// handleRuleActionsList returns the list of configured rule actions
+func (s *Server) handleRuleActionsList(w http.ResponseWriter, r *http.Request) {
+	config, err := s.configManager.LoadConfig()
+	if err != nil {
+		log.Printf("Error getting config: %v", err)
+		http.Error(w, "Failed to get config", http.StatusInternalServerError)
+		return
+	}
+
+	// Extract rule actions from config
+	ruleActions := []RuleActionData{}
+
+	// Get from route.rule_action if it exists
+	if config.Route != nil && config.Route.RuleAction != nil {
+		for _, action := range config.Route.RuleAction {
+			if actionMap, ok := action.(map[string]interface{}); ok {
+				ruleAction := s.parseRuleAction(actionMap)
+				ruleActions = append(ruleActions, ruleAction)
+			}
+		}
+	}
+
+	data := map[string]interface{}{
+		"RuleActions": ruleActions,
+	}
+
+	if err := s.renderTemplate(w, "rule-action-list.html", data); err != nil {
+		log.Printf("Error rendering template: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
+}
+
+// parseRuleAction parses a rule action from config
+func (s *Server) parseRuleAction(actionMap map[string]interface{}) RuleActionData {
+	action := RuleActionData{
+		Config: actionMap,
+	}
+
+	// Get action type
+	if actionType, ok := actionMap["action"].(string); ok {
+		action.Type = actionType
+	}
+
+	// Parse based on type
+	if outbound, ok := actionMap["outbound"].(string); ok {
+		action.Outbound = outbound
+	}
+	if sniffer, ok := actionMap["sniffer"].([]interface{}); ok {
+		for _, s := range sniffer {
+			if str, ok := s.(string); ok {
+				action.Sniffer = append(action.Sniffer, str)
+			}
+		}
+	}
+	if timeout, ok := actionMap["timeout"].(float64); ok {
+		action.Timeout = uint32(timeout)
+	}
+	if server, ok := actionMap["server"].(string); ok {
+		action.Server = server
+	}
+	if strategy, ok := actionMap["strategy"].(string); ok {
+		action.Strategy = strategy
+	}
+	if disableCache, ok := actionMap["disable_cache"].(bool); ok {
+		action.DisableCache = disableCache
+	}
+	if method, ok := actionMap["method"].(string); ok {
+		action.Method = method
+	}
+	if noDrop, ok := actionMap["no_drop"].(bool); ok {
+		action.NoDrop = noDrop
+	}
+	if overrideAddress, ok := actionMap["override_address"].(string); ok {
+		action.OverrideAddress = overrideAddress
+	}
+	if overridePort, ok := actionMap["override_port"].(float64); ok {
+		action.OverridePort = uint16(overridePort)
+	}
+	if udpConnect, ok := actionMap["udp_connect"].(bool); ok {
+		action.UDPConnect = udpConnect
+	}
+	if tlsFragment, ok := actionMap["tls_fragment"].(bool); ok {
+		action.TLSFragment = tlsFragment
+	}
+
+	return action
+}
+
+// handleRuleActionForm handles showing the rule action form
+func (s *Server) handleRuleActionForm(w http.ResponseWriter, r *http.Request) {
+	indexStr := r.URL.Query().Get("index")
+	editMode := indexStr != ""
+
+	outbounds, _ := s.getOutboundTags()
+	data := map[string]interface{}{
+		"EditMode":  editMode,
+		"Outbounds": outbounds,
+	}
+
+	if editMode {
+		index, err := strconv.Atoi(indexStr)
+		if err != nil {
+			http.Error(w, "Invalid index", http.StatusBadRequest)
+			return
+		}
+
+		config, err := s.configManager.LoadConfig()
+		if err != nil {
+			http.Error(w, "Failed to get config", http.StatusInternalServerError)
+			return
+		}
+
+		// Get rule action from config
+		if config.Route != nil && config.Route.RuleAction != nil {
+			if index >= 0 && index < len(config.Route.RuleAction) {
+				if actionMap, ok := config.Route.RuleAction[index].(map[string]interface{}); ok {
+					data["Action"] = s.parseRuleAction(actionMap)
+					data["ActionIndex"] = index
+				}
+			}
+		}
+	} else {
+		data["Action"] = RuleActionData{}
+	}
+
+	if err := s.renderTemplate(w, "rule-action-form.html", data); err != nil {
+		log.Printf("Error rendering template: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
+}
+
+// handleRuleActionCreate handles creating a new rule action
+func (s *Server) handleRuleActionCreate(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Failed to parse form", http.StatusBadRequest)
+		return
+	}
+
+	action := s.buildRuleActionFromForm(r)
+
+	// Get current config
+	cfg, err := s.configManager.LoadConfig()
+	if err != nil {
+		http.Error(w, "Failed to get config", http.StatusInternalServerError)
+		return
+	}
+
+	// Ensure route exists
+	if cfg.Route == nil {
+		cfg.Route = &config.RouteConfig{
+			RuleAction: []interface{}{},
+		}
+	}
+
+	// Ensure rule_action exists
+	if cfg.Route.RuleAction == nil {
+		cfg.Route.RuleAction = []interface{}{}
+	}
+
+	// Add new action
+	cfg.Route.RuleAction = append(cfg.Route.RuleAction, action)
+
+	// Save config
+	if err := s.configManager.SaveConfig(cfg); err != nil {
+		log.Printf("Error saving config: %v", err)
+		http.Error(w, "Failed to save config", http.StatusInternalServerError)
+		return
+	}
+
+	// Reload service
+	if err := s.serviceManager.Reload(); err != nil {
+		log.Printf("Warning: failed to reload service: %v", err)
+	}
+
+	// Return updated list
+	s.handleRuleActionsList(w, r)
+}
+
+// handleRuleActionUpdate handles updating an existing rule action
+func (s *Server) handleRuleActionUpdate(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Failed to parse form", http.StatusBadRequest)
+		return
+	}
+
+	indexStr := r.FormValue("index")
+	if indexStr == "" {
+		http.Error(w, "No index provided", http.StatusBadRequest)
+		return
+	}
+
+	index, err := strconv.Atoi(indexStr)
+	if err != nil {
+		http.Error(w, "Invalid index", http.StatusBadRequest)
+		return
+	}
+
+	action := s.buildRuleActionFromForm(r)
+
+	// Get current config
+	cfg, err := s.configManager.LoadConfig()
+	if err != nil {
+		http.Error(w, "Failed to get config", http.StatusInternalServerError)
+		return
+	}
+
+	// Validate index
+	if cfg.Route == nil || cfg.Route.RuleAction == nil || index < 0 || index >= len(cfg.Route.RuleAction) {
+		http.Error(w, "Invalid action index", http.StatusBadRequest)
+		return
+	}
+
+	// Update action
+	cfg.Route.RuleAction[index] = action
+
+	// Save config
+	if err := s.configManager.SaveConfig(cfg); err != nil {
+		log.Printf("Error saving config: %v", err)
+		http.Error(w, "Failed to save config", http.StatusInternalServerError)
+		return
+	}
+
+	// Reload service
+	if err := s.serviceManager.Reload(); err != nil {
+		log.Printf("Warning: failed to reload service: %v", err)
+	}
+
+	// Return updated list
+	s.handleRuleActionsList(w, r)
+}
+
+// handleRuleActionDelete handles deleting a rule action
+func (s *Server) handleRuleActionDelete(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodDelete {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	indexStr := r.URL.Query().Get("index")
+	if indexStr == "" {
+		http.Error(w, "No index provided", http.StatusBadRequest)
+		return
+	}
+
+	index, err := strconv.Atoi(indexStr)
+	if err != nil {
+		http.Error(w, "Invalid index", http.StatusBadRequest)
+		return
+	}
+
+	// Get current config
+	cfg, err := s.configManager.LoadConfig()
+	if err != nil {
+		http.Error(w, "Failed to get config", http.StatusInternalServerError)
+		return
+	}
+
+	// Validate index
+	if cfg.Route == nil || cfg.Route.RuleAction == nil || index < 0 || index >= len(cfg.Route.RuleAction) {
+		http.Error(w, "Invalid action index", http.StatusBadRequest)
+		return
+	}
+
+	// Remove action
+	cfg.Route.RuleAction = append(cfg.Route.RuleAction[:index], cfg.Route.RuleAction[index+1:]...)
+
+	// Save config
+	if err := s.configManager.SaveConfig(cfg); err != nil {
+		log.Printf("Error saving config: %v", err)
+		http.Error(w, "Failed to save config", http.StatusInternalServerError)
+		return
+	}
+
+	// Reload service
+	if err := s.serviceManager.Reload(); err != nil {
+		log.Printf("Warning: failed to reload service: %v", err)
+	}
+
+	// Return updated list
+	s.handleRuleActionsList(w, r)
+}
+
+// buildRuleActionFromForm builds a rule action map from form data
+func (s *Server) buildRuleActionFromForm(r *http.Request) map[string]interface{} {
+	action := make(map[string]interface{})
+
+	// Get action type
+	actionType := r.FormValue("action")
+	if actionType != "" {
+		action["action"] = actionType
+	}
+
+	// Add fields based on action type
+	switch actionType {
+	case "route":
+		if outbound := r.FormValue("outbound"); outbound != "" {
+			action["outbound"] = outbound
+		}
+
+	case "sniff":
+		if sniffers := r.Form["sniffer[]"]; len(sniffers) > 0 {
+			var validSniffers []string
+			for _, s := range sniffers {
+				s = strings.TrimSpace(s)
+				if s != "" {
+					validSniffers = append(validSniffers, s)
+				}
+			}
+			if len(validSniffers) > 0 {
+				action["sniffer"] = validSniffers
+			}
+		}
+		if timeout := r.FormValue("timeout"); timeout != "" {
+			if val, err := strconv.ParseUint(timeout, 10, 32); err == nil {
+				action["timeout"] = uint32(val)
+			}
+		}
+
+	case "resolve":
+		if server := r.FormValue("server"); server != "" {
+			action["server"] = server
+		}
+		if strategy := r.FormValue("strategy"); strategy != "" {
+			action["strategy"] = strategy
+		}
+		if r.FormValue("disable_cache") == "on" {
+			action["disable_cache"] = true
+		}
+		if rewriteTTL := r.FormValue("rewrite_ttl"); rewriteTTL != "" {
+			if val, err := strconv.ParseUint(rewriteTTL, 10, 32); err == nil {
+				ttl := uint32(val)
+				action["rewrite_ttl"] = &ttl
+			}
+		}
+		if clientSubnet := r.FormValue("client_subnet"); clientSubnet != "" {
+			action["client_subnet"] = clientSubnet
+		}
+
+	case "reject":
+		if method := r.FormValue("method"); method != "" {
+			action["method"] = method
+		}
+		if r.FormValue("no_drop") == "on" {
+			action["no_drop"] = true
+		}
+
+	case "route-options":
+		if outbound := r.FormValue("outbound"); outbound != "" {
+			action["outbound"] = outbound
+		}
+		if overrideAddress := r.FormValue("override_address"); overrideAddress != "" {
+			action["override_address"] = overrideAddress
+		}
+		if overridePort := r.FormValue("override_port"); overridePort != "" {
+			if val, err := strconv.ParseUint(overridePort, 10, 16); err == nil {
+				action["override_port"] = uint16(val)
+			}
+		}
+		if networkStrategy := r.FormValue("network_strategy"); networkStrategy != "" {
+			action["network_strategy"] = networkStrategy
+		}
+		if fallbackDelay := r.FormValue("fallback_delay"); fallbackDelay != "" {
+			if val, err := strconv.ParseUint(fallbackDelay, 10, 32); err == nil {
+				action["fallback_delay"] = uint32(val)
+			}
+		}
+		if udpTimeout := r.FormValue("udp_timeout"); udpTimeout != "" {
+			if val, err := strconv.ParseUint(udpTimeout, 10, 32); err == nil {
+				action["udp_timeout"] = uint32(val)
+			}
+		}
+		if r.FormValue("udp_disable_domain_unmapping") == "on" {
+			action["udp_disable_domain_unmapping"] = true
+		}
+		if r.FormValue("udp_connect") == "on" {
+			action["udp_connect"] = true
+		}
+		if r.FormValue("tls_fragment") == "on" {
+			action["tls_fragment"] = true
+		}
+		if tlsFragmentFallbackDelay := r.FormValue("tls_fragment_fallback_delay"); tlsFragmentFallbackDelay != "" {
+			if val, err := strconv.ParseUint(tlsFragmentFallbackDelay, 10, 32); err == nil {
+				action["tls_fragment_fallback_delay"] = uint32(val)
+			}
+		}
+		if r.FormValue("tls_record_fragment") == "on" {
+			action["tls_record_fragment"] = true
+		}
+	}
+
+	return action
 }
