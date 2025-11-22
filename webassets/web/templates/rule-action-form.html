@@ -111,13 +111,13 @@
 
                 <div class="form-group">
                     <label for="rewrite_ttl">Rewrite TTL (seconds)</label>
-                    <input type="number" name="rewrite_ttl" id="rewrite_ttl" value="{{.Action.RewriteTTL}}" placeholder="e.g., 3600">
+                    <input type="number" name="rewrite_ttl" id="rewrite_ttl" value="{{derefUint32 .Action.RewriteTTL}}" placeholder="e.g., 3600">
                     <small class="help-text">Override DNS response TTL</small>
                 </div>
 
                 <div class="form-group">
                     <label for="client_subnet">Client Subnet</label>
-                    <input type="text" name="client_subnet" id="client_subnet" value="{{.Action.ClientSubnet}}" placeholder="e.g., 1.1.1.1/24">
+                    <input type="text" name="client_subnet" id="client_subnet" value="{{derefString .Action.ClientSubnet}}" placeholder="e.g., 1.1.1.1/24">
                     <small class="help-text">EDNS Client Subnet (ECS)</small>
                 </div>
             </div>
@@ -174,10 +174,10 @@
                     <label for="network_strategy">Network Strategy</label>
                     <select name="network_strategy" id="network_strategy">
                         <option value="">-- Default --</option>
-                        <option value="prefer_ipv4" {{if eq .Action.NetworkStrategy "prefer_ipv4"}}selected{{end}}>Prefer IPv4</option>
-                        <option value="prefer_ipv6" {{if eq .Action.NetworkStrategy "prefer_ipv6"}}selected{{end}}>Prefer IPv6</option>
-                        <option value="ipv4_only" {{if eq .Action.NetworkStrategy "ipv4_only"}}selected{{end}}>IPv4 Only</option>
-                        <option value="ipv6_only" {{if eq .Action.NetworkStrategy "ipv6_only"}}selected{{end}}>IPv6 Only</option>
+                        <option value="prefer_ipv4" {{if strPtrEq .Action.NetworkStrategy "prefer_ipv4"}}selected{{end}}>Prefer IPv4</option>
+                        <option value="prefer_ipv6" {{if strPtrEq .Action.NetworkStrategy "prefer_ipv6"}}selected{{end}}>Prefer IPv6</option>
+                        <option value="ipv4_only" {{if strPtrEq .Action.NetworkStrategy "ipv4_only"}}selected{{end}}>IPv4 Only</option>
+                        <option value="ipv6_only" {{if strPtrEq .Action.NetworkStrategy "ipv6_only"}}selected{{end}}>IPv6 Only</option>
                     </select>
                     <small class="help-text">Network strategy for this route</small>
                 </div>
