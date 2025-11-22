@@ -7,8 +7,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/matinhimself/singbox-web-config/assets"
 	"github.com/matinhimself/singbox-web-config/internal/handlers"
+	"github.com/matinhimself/singbox-web-config/webassets"
 )
 
 func main() {
@@ -23,7 +23,7 @@ func main() {
 	log.Printf("Service name: %s", *serviceName)
 	log.Printf("")
 
-	server, err := handlers.NewServer(*addr, *configPath, *serviceName, assets.TemplatesFS, assets.StaticFS)
+	server, err := handlers.NewServer(*addr, *configPath, *serviceName, webassets.TemplatesFS, webassets.StaticFS)
 	if err != nil {
 		log.Fatalf("Failed to create server: %v", err)
 	}
