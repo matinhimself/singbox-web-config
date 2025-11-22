@@ -150,6 +150,7 @@ func (s *Server) handleConnectionToRule(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Extract connection properties from form
+	action := r.FormValue("action")
 	sourceIP := r.FormValue("source_ip")
 	destinationIP := r.FormValue("destination_ip")
 	destinationPort := r.FormValue("destination_port")
@@ -157,9 +158,19 @@ func (s *Server) handleConnectionToRule(w http.ResponseWriter, r *http.Request) 
 	domain := r.FormValue("domain")
 	outbound := r.FormValue("outbound")
 
+	// Validate action
+	if action == "" {
+		http.Error(w, "Action is required", http.StatusBadRequest)
+		return
+	}
+
 	// Build rule from selected properties
 	rule := make(map[string]interface{})
 
+	// Add action field
+	rule["action"] = action
+
+	// Add matching fields
 	if sourceIP != "" {
 		rule["source_ip_cidr"] = []string{sourceIP + "/32"}
 	}
@@ -175,7 +186,9 @@ func (s *Server) handleConnectionToRule(w http.ResponseWriter, r *http.Request) 
 	if domain != "" {
 		rule["domain_suffix"] = []string{domain}
 	}
-	if outbound != "" {
+
+	// Add outbound for actions that need it
+	if outbound != "" && (action == "route" || action == "route-options") {
 		rule["outbound"] = outbound
 	}
 

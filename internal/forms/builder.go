@@ -155,7 +155,7 @@ func (b *Builder) determineFieldType(formField *FormField, t reflect.Type) {
 
 // isSelectField checks if a field should be a select dropdown
 func (b *Builder) isSelectField(fieldName string) bool {
-	selectFields := []string{"Mode", "ClashMode", "Strategy"}
+	selectFields := []string{"Mode", "ClashMode", "Strategy", "DNSStrategy", "Action", "Method"}
 	for _, sf := range selectFields {
 		if fieldName == sf {
 			return true
@@ -171,8 +171,12 @@ func (b *Builder) getSelectOptions(fieldName string) []string {
 		return []string{"and", "or"}
 	case "ClashMode":
 		return []string{"direct", "global", "rule"}
-	case "Strategy":
+	case "Strategy", "DNSStrategy":
 		return []string{"prefer_ipv4", "prefer_ipv6", "ipv4_only", "ipv6_only"}
+	case "Action":
+		return []string{"route", "sniff", "resolve", "reject", "route-options", "hijack-dns"}
+	case "Method":
+		return []string{"default", "drop"}
 	default:
 		return []string{}
 	}
@@ -210,31 +214,63 @@ func (b *Builder) typeNameToTitle(name string) string {
 // getFieldDescription returns a description for common fields
 func (b *Builder) getFieldDescription(fieldName string) string {
 	descriptions := map[string]string{
-		"Domain":              "Exact domain names to match (e.g., google.com)",
-		"DomainSuffix":        "Domain suffixes to match (e.g., .google.com matches google.com and all subdomains)",
-		"DomainKeyword":       "Keywords that must appear in the domain",
-		"DomainRegex":         "Regular expressions for domain matching",
-		"Geosite":             "Geosite categories (e.g., cn, google, facebook)",
-		"GeoIP":               "Country codes for destination IP (e.g., CN, US)",
-		"SourceGeoIP":         "Country codes for source IP",
-		"IPCIDR":              "IP CIDR ranges for destination (e.g., 192.168.0.0/16)",
-		"SourceIPCIDR":        "IP CIDR ranges for source",
-		"Port":                "Destination ports to match (e.g., 80, 443)",
-		"SourcePort":          "Source ports to match",
-		"PortRange":           "Destination port ranges (e.g., 1000:2000)",
-		"SourcePortRange":     "Source port ranges",
-		"Protocol":            "Network protocols (e.g., tcp, udp)",
-		"Network":             "Network types (e.g., tcp, udp)",
-		"Inbound":             "Inbound tags to match",
-		"Outbound":            "Target outbound for this rule",
-		"ProcessName":         "Process names to match",
-		"ProcessPath":         "Process paths to match",
-		"User":                "User names to match",
-		"RuleSet":             "Rule set references",
-		"Mode":                "Logical mode: 'and' (all rules must match) or 'or' (any rule must match)",
-		"Invert":              "Invert the rule match result",
-		"IPIsPrivate":         "Match private IP addresses",
-		"SourceIPIsPrivate":   "Match private source IP addresses",
+		// Action fields
+		"Action":                  "Action type: 'route' (route to outbound), 'sniff' (protocol sniffing), 'resolve' (DNS resolution), 'reject' (block traffic), 'route-options' (advanced routing), 'hijack-dns' (DNS hijacking)",
+		"Outbound":                "Target outbound for 'route' action",
+
+		// Sniff action fields
+		"Sniffer":                 "Enabled sniffers for 'sniff' action (empty = all enabled)",
+		"SniffTimeout":            "Timeout for protocol sniffing in milliseconds",
+
+		// Resolve action fields
+		"Server":                  "DNS server for 'resolve' action or DNS routing",
+		"Strategy":                "DNS resolution strategy: prefer_ipv4, prefer_ipv6, ipv4_only, ipv6_only",
+		"DNSStrategy":             "DNS resolution strategy: prefer_ipv4, prefer_ipv6, ipv4_only, ipv6_only",
+		"DisableCache":            "Disable DNS cache for this rule",
+		"RewriteTTL":              "Override DNS response TTL (in seconds)",
+		"ClientSubnet":            "Client subnet for EDNS Client Subnet (ECS)",
+
+		// Reject action fields
+		"Method":                  "Reject method: 'default' or 'drop'",
+		"NoDrop":                  "Don't drop the connection for reject action",
+
+		// Route-options action fields
+		"OverrideAddress":         "Override destination address",
+		"OverridePort":            "Override destination port",
+		"NetworkStrategy":         "Network strategy for route-options",
+		"FallbackDelay":           "Fallback delay in milliseconds",
+		"UDPDisableDomainUnmapping": "Disable domain unmapping for UDP",
+		"UDPConnect":              "Use connected UDP socket",
+		"UDPTimeout":              "UDP timeout in seconds",
+		"TLSFragment":             "Enable TLS fragmentation",
+		"TLSFragmentFallbackDelay": "TLS fragment fallback delay",
+		"TLSRecordFragment":       "Enable TLS record fragmentation",
+
+		// Rule matching fields
+		"Domain":                  "Exact domain names to match (e.g., google.com)",
+		"DomainSuffix":            "Domain suffixes to match (e.g., .google.com matches google.com and all subdomains)",
+		"DomainKeyword":           "Keywords that must appear in the domain",
+		"DomainRegex":             "Regular expressions for domain matching",
+		"Geosite":                 "Geosite categories (e.g., cn, google, facebook)",
+		"GeoIP":                   "Country codes for destination IP (e.g., CN, US)",
+		"SourceGeoIP":             "Country codes for source IP",
+		"IPCIDR":                  "IP CIDR ranges for destination (e.g., 192.168.0.0/16)",
+		"SourceIPCIDR":            "IP CIDR ranges for source",
+		"Port":                    "Destination ports to match (e.g., 80, 443)",
+		"SourcePort":              "Source ports to match",
+		"PortRange":               "Destination port ranges (e.g., 1000:2000)",
+		"SourcePortRange":         "Source port ranges",
+		"Protocol":                "Network protocols (e.g., tcp, udp)",
+		"Network":                 "Network types (e.g., tcp, udp)",
+		"Inbound":                 "Inbound tags to match",
+		"ProcessName":             "Process names to match",
+		"ProcessPath":             "Process paths to match",
+		"User":                    "User names to match",
+		"RuleSet":                 "Rule set references",
+		"Mode":                    "Logical mode: 'and' (all rules must match) or 'or' (any rule must match)",
+		"Invert":                  "Invert the rule match result",
+		"IPIsPrivate":             "Match private IP addresses",
+		"SourceIPIsPrivate":       "Match private source IP addresses",
 	}
 
 	if desc, ok := descriptions[fieldName]; ok {

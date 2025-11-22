@@ -344,8 +344,16 @@ class ConnectionsManager {
             if (!cb.disabled) cb.checked = false;
         });
 
-        // Reset outbound
+        // Reset action and outbound
+        document.getElementById('rule-action').value = '';
         document.getElementById('rule-outbound').value = '';
+        document.getElementById('rule-outbound-group').style.display = 'none';
+
+        // Add event listeners for preview updates
+        document.querySelectorAll('.rule-checkbox').forEach(cb => {
+            cb.addEventListener('change', () => this.updateRulePreview());
+        });
+        document.getElementById('rule-outbound').addEventListener('change', () => this.updateRulePreview());
 
         // Update preview
         this.updateRulePreview();
@@ -360,6 +368,13 @@ class ConnectionsManager {
         const rule = {};
         const conn = this.selectedConnection;
 
+        // Add action field
+        const action = document.getElementById('rule-action').value;
+        if (action) {
+            rule.action = action;
+        }
+
+        // Add matching fields
         if (document.getElementById('rule-source-ip').checked) {
             rule.source_ip_cidr = [conn.metadata.sourceIP + '/32'];
         }
@@ -380,8 +395,9 @@ class ConnectionsManager {
             rule.domain_suffix = [conn.metadata.host];
         }
 
+        // Add outbound for 'route' action
         const outbound = document.getElementById('rule-outbound').value;
-        if (outbound) {
+        if (outbound && (action === 'route' || action === 'route-options')) {
             rule.outbound = outbound;
         }
 
@@ -471,12 +487,38 @@ function closeRuleModal() {
     connectionsManager.selectedConnection = null;
 }
 
+function updateRuleActionFields() {
+    const action = document.getElementById('rule-action').value;
+    const outboundGroup = document.getElementById('rule-outbound-group');
+
+    // Show outbound selector only for 'route' and 'route-options' actions
+    if (action === 'route' || action === 'route-options') {
+        outboundGroup.style.display = 'block';
+    } else {
+        outboundGroup.style.display = 'none';
+    }
+
+    // Update preview
+    if (connectionsManager) {
+        connectionsManager.updateRulePreview();
+    }
+}
+
 async function createRuleFromConnection() {
     if (!connectionsManager.selectedConnection) return;
 
     const conn = connectionsManager.selectedConnection;
     const formData = new FormData();
 
+    // Validate action
+    const action = document.getElementById('rule-action').value;
+    if (!action) {
+        alert('Please select an action');
+        return;
+    }
+    formData.append('action', action);
+
+    // Add matching fields
     if (document.getElementById('rule-source-ip').checked) {
         formData.append('source_ip', conn.metadata.sourceIP);
     }
@@ -497,12 +539,15 @@ async function createRuleFromConnection() {
         formData.append('domain', conn.metadata.host);
     }
 
+    // Validate and add outbound for actions that need it
     const outbound = document.getElementById('rule-outbound').value;
-    if (!outbound) {
-        alert('Please select an outbound');
-        return;
+    if (action === 'route' || action === 'route-options') {
+        if (!outbound) {
+            alert('Please select an outbound for ' + action + ' action');
+            return;
+        }
+        formData.append('outbound', outbound);
     }
-    formData.append('outbound', outbound);
 
     try {
         const response = await fetch('/api/connections/create-rule', {
