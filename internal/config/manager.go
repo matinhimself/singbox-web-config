@@ -53,8 +53,9 @@ type DNSConfig struct {
 }
 
 type RouteConfig struct {
-	Rules []interface{} `json:"rules,omitempty"`
-	Final string        `json:"final,omitempty"`
+	Rules      []interface{} `json:"rules,omitempty"`
+	RuleAction []interface{} `json:"rule_action,omitempty"`
+	Final      string        `json:"final,omitempty"`
 }
 
 // BackupMetadata stores information about a backup
