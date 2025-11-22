@@ -17,6 +17,7 @@
             <div class="nav-menu">
                 <a href="/" class="nav-item">Home</a>
                 <a href="/rules" class="nav-item">Route Rules</a>
+                <a href="/rule-actions" class="nav-item">Rule Actions</a>
                 <a href="/connections" class="nav-item">Connections</a>
                 <a href="/service" class="nav-item">Service</a>
             </div>
@@ -173,8 +174,20 @@
                     </label>
 
                     <div class="form-group">
+                        <label for="rule-action"><strong>Action <span class="required">*</span></strong></label>
+                        <select id="rule-action" class="form-control" required onchange="updateRuleActionFields()">
+                            <option value="">Select action...</option>
+                            <option value="route">Route (to outbound)</option>
+                            <option value="sniff">Sniff (protocol detection)</option>
+                            <option value="resolve">Resolve (DNS resolution)</option>
+                            <option value="reject">Reject (block traffic)</option>
+                            <option value="route-options">Route Options (advanced)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="rule-outbound-group" style="display: none;">
                         <label for="rule-outbound"><strong>Route to Outbound <span class="required">*</span></strong></label>
-                        <select id="rule-outbound" class="form-control" required>
+                        <select id="rule-outbound" class="form-control">
                             <option value="">Select outbound...</option>
                         </select>
                     </div>

@@ -30,7 +30,7 @@
             </div>
 
             {{range .Form.Fields}}
-            <div class="form-group">
+            <div class="form-group" data-field="{{.JSONTag}}">
                 <label for="{{.JSONTag}}">
                     {{.Label}}
                     {{if .Required}}<span class="required">*</span>{{end}}
@@ -42,7 +42,7 @@
                            id="{{.JSONTag}}"
                            {{if .Value}}checked{{end}}>
                 {{else if eq .Type "select"}}
-                    <select name="{{.JSONTag}}" id="{{.JSONTag}}">
+                    <select name="{{.JSONTag}}" id="{{.JSONTag}}" {{if eq .JSONTag "action"}}onchange="updateActionFields()"{{end}}>
                         <option value="">-- Select --</option>
                         {{range .Options}}
                         <option value="{{.}}" {{if eq . $.Value}}selected{{end}}>{{.}}</option>
@@ -122,6 +122,77 @@
 </div>
 
 <script>
+// Action field mappings - defines which fields are relevant for each action type
+const actionFieldMap = {
+    'route': ['outbound'],
+    'sniff': ['sniffer', 'timeout'],
+    'resolve': ['server', 'strategy', 'disable_cache', 'rewrite_ttl', 'client_subnet'],
+    'reject': ['method', 'no_drop'],
+    'route-options': ['outbound', 'override_address', 'override_port', 'network_strategy', 'fallback_delay',
+                      'udp_disable_domain_unmapping', 'udp_connect', 'udp_timeout',
+                      'tls_fragment', 'tls_fragment_fallback_delay', 'tls_record_fragment'],
+    'hijack-dns': []
+};
+
+// Fields that are always shown (rule matching fields)
+const alwaysVisibleFields = [
+    'action', 'inbound', 'ip_version', 'network', 'auth_user', 'protocol', 'client',
+    'domain', 'domain_suffix', 'domain_keyword', 'domain_regex',
+    'geosite', 'source_geoip', 'geoip', 'source_ip_cidr', 'source_ip_is_private',
+    'ip_cidr', 'ip_is_private', 'source_port', 'source_port_range', 'port', 'port_range',
+    'process_name', 'process_path', 'process_path_regex', 'package_name',
+    'user', 'user_id', 'clash_mode', 'network_type', 'network_is_expensive',
+    'network_is_constrained', 'wifi_ssid', 'wifi_bssid', 'interface_address',
+    'network_interface_address', 'default_interface_address', 'preferred_by',
+    'rule_set', 'rule_set_ip_cidr_match_source', 'invert',
+    // DNS rule fields
+    'query_type', 'ip_accept_any', 'rule_set_ip_cidr_accept_empty'
+];
+
+function updateActionFields() {
+    const actionSelect = document.getElementById('action');
+    if (!actionSelect) return;
+
+    const selectedAction = actionSelect.value;
+    const allFields = document.querySelectorAll('.form-group[data-field]');
+
+    allFields.forEach(field => {
+        const fieldName = field.getAttribute('data-field');
+
+        // Always show matching fields and the action field itself
+        if (alwaysVisibleFields.includes(fieldName)) {
+            field.style.display = 'block';
+            return;
+        }
+
+        // If no action selected, hide action-specific fields
+        if (!selectedAction) {
+            field.style.display = 'none';
+            return;
+        }
+
+        // Check if this field is relevant for the selected action
+        const relevantFields = actionFieldMap[selectedAction] || [];
+        if (relevantFields.includes(fieldName)) {
+            field.style.display = 'block';
+        } else {
+            field.style.display = 'none';
+        }
+    });
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    updateActionFields();
+});
+
+// Also call it after HTMX swaps content
+document.body.addEventListener('htmx:afterSwap', function(event) {
+    if (event.detail.target.id === 'rule-form-modal') {
+        updateActionFields();
+    }
+});
+
 function addArrayField(containerId, fieldName, placeholder, hasOptions, options) {
     const container = document.getElementById(containerId);
     const newItem = document.createElement('div');
