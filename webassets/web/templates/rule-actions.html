@@ -1,30 +1,9 @@
 {{define "rule-actions.html"}}
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rule Actions - Sing-Box Config Manager</title>
-    <link rel="stylesheet" href="/static/css/style.css">
-    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-</head>
+{{template "head" (dict "Title" "Rule Actions")}}
 <body>
-    <nav class="navbar">
-        <div class="container">
-            <div class="navbar-brand">
-                <h1>Sing-Box Config Manager</h1>
-            </div>
-            <ul class="navbar-menu">
-                <li><a href="/">Dashboard</a></li>
-                <li><a href="/inbounds">Inbounds</a></li>
-                <li><a href="/outbounds">Outbounds</a></li>
-                <li><a href="/rules">Rules</a></li>
-                <li><a href="/rule-actions" class="active">Rule Actions</a></li>
-                <li><a href="/dns">DNS</a></li>
-                <li><a href="/connections">Connections</a></li>
-            </ul>
-        </div>
-    </nav>
+    {{template "navbar"}}
 
     <div class="container">
         <div class="page-header">
@@ -52,11 +31,7 @@
         </div>
     </div>
 
-    <footer class="footer">
-        <div class="container">
-            <p>Sing-Box Web Config Manager - Simple configuration management for sing-box</p>
-        </div>
-    </footer>
+    {{template "footer"}}
 </body>
 </html>
 {{end}}

@@ -1,28 +1,9 @@
 {{define "connections.html"}}
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{.Title}} - Sing-Box Config Manager</title>
-    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-    <link rel="stylesheet" href="/static/css/style.css">
-</head>
+{{template "head" .}}
 <body>
-    <nav class="navbar">
-        <div class="container">
-            <div class="nav-brand">
-                <a href="/">Sing-Box Config Manager</a>
-            </div>
-            <div class="nav-menu">
-                <a href="/" class="nav-item">Home</a>
-                <a href="/rules" class="nav-item">Route Rules</a>
-                <a href="/rule-actions" class="nav-item">Rule Actions</a>
-                <a href="/connections" class="nav-item">Connections</a>
-                <a href="/service" class="nav-item">Service</a>
-            </div>
-        </div>
-    </nav>
+    {{template "navbar"}}
 
     <main class="container">
         <div class="page-header">
@@ -116,11 +97,7 @@
         </div>
     </main>
 
-    <footer>
-        <div class="container">
-            <p>Sing-Box Web Config Manager - Simple configuration management for sing-box</p>
-        </div>
-    </footer>
+    {{template "footer"}}
 
     <!-- Rule Creation Modal -->
     <div id="rule-modal" class="modal-overlay" style="display: none;">
