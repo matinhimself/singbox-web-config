@@ -53,6 +53,41 @@ type PlainRuleSet struct {
 }
 
 type RawDefaultRule struct {
+	// Action field (required in sing-box 1.11.0+)
+	Action string `json:"action,omitempty"`
+
+	// Action-specific fields
+	// For "route" action
+	Outbound string `json:"outbound,omitempty"`
+
+	// For "sniff" action
+	Sniffer []string `json:"sniffer,omitempty"`
+	SniffTimeout uint32 `json:"timeout,omitempty"`
+
+	// For "resolve" action
+	Server       string  `json:"server,omitempty"`
+	Strategy     string  `json:"strategy,omitempty"`
+	DisableCache bool    `json:"disable_cache,omitempty"`
+	RewriteTTL   *uint32 `json:"rewrite_ttl,omitempty"`
+	ClientSubnet *string `json:"client_subnet,omitempty"`
+
+	// For "reject" action
+	Method string `json:"method,omitempty"`
+	NoDrop bool   `json:"no_drop,omitempty"`
+
+	// For "route-options" action
+	OverrideAddress           string  `json:"override_address,omitempty"`
+	OverridePort              uint16  `json:"override_port,omitempty"`
+	NetworkStrategy           *string `json:"network_strategy,omitempty"`
+	FallbackDelay             uint32  `json:"fallback_delay,omitempty"`
+	UDPDisableDomainUnmapping bool    `json:"udp_disable_domain_unmapping,omitempty"`
+	UDPConnect                bool    `json:"udp_connect,omitempty"`
+	UDPTimeout                uint32  `json:"udp_timeout,omitempty"`
+	TLSFragment               bool    `json:"tls_fragment,omitempty"`
+	TLSFragmentFallbackDelay  uint32  `json:"tls_fragment_fallback_delay,omitempty"`
+	TLSRecordFragment         bool    `json:"tls_record_fragment,omitempty"`
+
+	// Rule matching fields
 	Inbound                  []string                `json:"inbound,omitempty"`
 	IPVersion                int                     `json:"ip_version,omitempty"`
 	Network                  []string                `json:"network,omitempty"`
@@ -155,6 +190,24 @@ type DNSRouteActionPredefined struct {
 }
 
 type RawDefaultDNSRule struct {
+	// Action field (required in sing-box 1.11.0+)
+	Action string `json:"action,omitempty"`
+
+	// Action-specific fields
+	// For "route" action
+	Server       string  `json:"server,omitempty"`
+	DNSStrategy  string  `json:"strategy,omitempty"`
+	DisableCache bool    `json:"disable_cache,omitempty"`
+	RewriteTTL   *uint32 `json:"rewrite_ttl,omitempty"`
+	ClientSubnet *string `json:"client_subnet,omitempty"`
+
+	// For "reject" action
+	Rcode  *uint16       `json:"rcode,omitempty"`
+	Answer []interface{} `json:"answer,omitempty"`
+	Ns     []interface{} `json:"ns,omitempty"`
+	Extra  []interface{} `json:"extra,omitempty"`
+
+	// Rule matching fields
 	Inbound                  []string                `json:"inbound,omitempty"`
 	IPVersion                int                     `json:"ip_version,omitempty"`
 	QueryType                []string                `json:"query_type,omitempty"`
