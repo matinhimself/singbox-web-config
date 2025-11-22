@@ -811,6 +811,32 @@ func (s *Server) parseRuleAction(actionMap map[string]interface{}) RuleActionDat
 	if tlsFragment, ok := actionMap["tls_fragment"].(bool); ok {
 		action.TLSFragment = tlsFragment
 	}
+	if tlsRecordFragment, ok := actionMap["tls_record_fragment"].(bool); ok {
+		action.TLSRecordFragment = tlsRecordFragment
+	}
+	if fallbackDelay, ok := actionMap["fallback_delay"].(float64); ok {
+		action.FallbackDelay = uint32(fallbackDelay)
+	}
+	if udpTimeout, ok := actionMap["udp_timeout"].(float64); ok {
+		action.UDPTimeout = uint32(udpTimeout)
+	}
+	if udpDisableDomainUnmapping, ok := actionMap["udp_disable_domain_unmapping"].(bool); ok {
+		action.UDPDisableDomainUnmapping = udpDisableDomainUnmapping
+	}
+	if tlsFragmentFallbackDelay, ok := actionMap["tls_fragment_fallback_delay"].(float64); ok {
+		action.TLSFragmentFallbackDelay = uint32(tlsFragmentFallbackDelay)
+	}
+	// Handle pointer fields
+	if networkStrategy, ok := actionMap["network_strategy"].(string); ok && networkStrategy != "" {
+		action.NetworkStrategy = &networkStrategy
+	}
+	if clientSubnet, ok := actionMap["client_subnet"].(string); ok && clientSubnet != "" {
+		action.ClientSubnet = &clientSubnet
+	}
+	if rewriteTTL, ok := actionMap["rewrite_ttl"].(float64); ok {
+		ttl := uint32(rewriteTTL)
+		action.RewriteTTL = &ttl
+	}
 
 	return action
 }
@@ -1072,7 +1098,7 @@ func (s *Server) buildRuleActionFromForm(r *http.Request) map[string]interface{}
 			}
 		}
 		if clientSubnet := r.FormValue("client_subnet"); clientSubnet != "" {
-			action["client_subnet"] = clientSubnet
+			action["client_subnet"] = &clientSubnet
 		}
 
 	case "reject":
@@ -1096,7 +1122,7 @@ func (s *Server) buildRuleActionFromForm(r *http.Request) map[string]interface{}
 			}
 		}
 		if networkStrategy := r.FormValue("network_strategy"); networkStrategy != "" {
-			action["network_strategy"] = networkStrategy
+			action["network_strategy"] = &networkStrategy
 		}
 		if fallbackDelay := r.FormValue("fallback_delay"); fallbackDelay != "" {
 			if val, err := strconv.ParseUint(fallbackDelay, 10, 32); err == nil {
