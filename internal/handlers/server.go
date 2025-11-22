@@ -85,7 +85,11 @@ func NewServer(addr string, configPath string, singboxService string, templatesF
 func (s *Server) loadTemplates() error {
 	// Use ParseFS to parse templates from embedded filesystem
 	// This properly handles nested template definitions
-	tmpl, err := template.New("").Funcs(templateFuncMap()).ParseFS(s.templatesFS, "web/templates/*.html")
+	tmpl, err := template.New("").Funcs(templateFuncMap()).ParseFS(
+		s.templatesFS,
+		"web/templates/*.html",
+		"web/templates/components/*.html",
+	)
 	if err != nil {
 		return fmt.Errorf("failed to parse templates: %w", err)
 	}

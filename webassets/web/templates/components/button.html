@@ -1,0 +1,12 @@
+{{define "button"}}
+<button class="button {{.Class}}"
+        {{if .HxGet}}hx-get="{{.HxGet}}"{{end}}
+        {{if .HxPost}}hx-post="{{.HxPost}}"{{end}}
+        {{if .HxTarget}}hx-target="{{.HxTarget}}"{{end}}
+        {{if .HxSwap}}hx-swap="{{.HxSwap}}"{{end}}
+        {{if .HxConfirm}}hx-confirm="{{.HxConfirm}}"{{end}}
+        {{if .OnClick}}onclick="{{.OnClick}}"{{end}}
+        {{if .Type}}type="{{.Type}}"{{end}}>
+    {{.Label}}
+</button>
+{{end}}
