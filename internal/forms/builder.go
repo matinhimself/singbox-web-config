@@ -32,8 +32,8 @@ type FormField struct {
 	ArrayType   string // For array fields
 	Options     []string
 	Description string
-	Value       interface{}   // Single value for non-array fields
-	Values      []string      // Multiple values for array fields
+	Value       interface{} // Single value for non-array fields
+	Values      []string    // Multiple values for array fields
 }
 
 // FormDefinition represents a complete form
@@ -182,15 +182,23 @@ func (b *Builder) getSelectOptions(fieldName string) []string {
 	}
 }
 
-// fieldNameToLabel converts a field name to a human-readable label
+// fieldNameToLabel converts a field name from PascalCase to a human-readable label
 func (b *Builder) fieldNameToLabel(name string) string {
-	// Add spaces before capital letters
 	var result []rune
 	for i, r := range name {
-		if i > 0 && r >= 'A' && r <= 'Z' {
+		isCurrentUpper := r >= 'A' && r <= 'Z'
+		isCurrentLower := r >= 'a' && r <= 'z'
+		isNextLower := i+1 < len(name) && name[i+1] >= 'a' && name[i+1] <= 'z'
+
+		if i > 0 && isCurrentUpper && isNextLower {
 			result = append(result, ' ')
 		}
+
 		result = append(result, r)
+
+		if i > 0 && isCurrentLower && !isNextLower {
+			result = append(result, ' ')
+		}
 	}
 	return string(result)
 }
@@ -215,62 +223,62 @@ func (b *Builder) typeNameToTitle(name string) string {
 func (b *Builder) getFieldDescription(fieldName string) string {
 	descriptions := map[string]string{
 		// Action fields
-		"Action":                  "Action type: 'route' (route to outbound), 'sniff' (protocol sniffing), 'resolve' (DNS resolution), 'reject' (block traffic), 'route-options' (advanced routing), 'hijack-dns' (DNS hijacking)",
-		"Outbound":                "Target outbound for 'route' action",
+		"Action":   "Action type: 'route' (route to outbound), 'sniff' (protocol sniffing), 'resolve' (DNS resolution), 'reject' (block traffic), 'route-options' (advanced routing), 'hijack-dns' (DNS hijacking)",
+		"Outbound": "Target outbound for 'route' action",
 
 		// Sniff action fields
-		"Sniffer":                 "Enabled sniffers for 'sniff' action (empty = all enabled)",
-		"SniffTimeout":            "Timeout for protocol sniffing in milliseconds",
+		"Sniffer":      "Enabled sniffers for 'sniff' action (empty = all enabled)",
+		"SniffTimeout": "Timeout for protocol sniffing in milliseconds",
 
 		// Resolve action fields
-		"Server":                  "DNS server for 'resolve' action or DNS routing",
-		"Strategy":                "DNS resolution strategy: prefer_ipv4, prefer_ipv6, ipv4_only, ipv6_only",
-		"DNSStrategy":             "DNS resolution strategy: prefer_ipv4, prefer_ipv6, ipv4_only, ipv6_only",
-		"DisableCache":            "Disable DNS cache for this rule",
-		"RewriteTTL":              "Override DNS response TTL (in seconds)",
-		"ClientSubnet":            "Client subnet for EDNS Client Subnet (ECS)",
+		"Server":       "DNS server for 'resolve' action or DNS routing",
+		"Strategy":     "DNS resolution strategy: prefer_ipv4, prefer_ipv6, ipv4_only, ipv6_only",
+		"DNSStrategy":  "DNS resolution strategy: prefer_ipv4, prefer_ipv6, ipv4_only, ipv6_only",
+		"DisableCache": "Disable DNS cache for this rule",
+		"RewriteTTL":   "Override DNS response TTL (in seconds)",
+		"ClientSubnet": "Client subnet for EDNS Client Subnet (ECS)",
 
 		// Reject action fields
-		"Method":                  "Reject method: 'default' or 'drop'",
-		"NoDrop":                  "Don't drop the connection for reject action",
+		"Method": "Reject method: 'default' or 'drop'",
+		"NoDrop": "Don't drop the connection for reject action",
 
 		// Route-options action fields
-		"OverrideAddress":         "Override destination address",
-		"OverridePort":            "Override destination port",
-		"NetworkStrategy":         "Network strategy for route-options",
-		"FallbackDelay":           "Fallback delay in milliseconds",
+		"OverrideAddress":           "Override destination address",
+		"OverridePort":              "Override destination port",
+		"NetworkStrategy":           "Network strategy for route-options",
+		"FallbackDelay":             "Fallback delay in milliseconds",
 		"UDPDisableDomainUnmapping": "Disable domain unmapping for UDP",
-		"UDPConnect":              "Use connected UDP socket",
-		"UDPTimeout":              "UDP timeout in seconds",
-		"TLSFragment":             "Enable TLS fragmentation",
-		"TLSFragmentFallbackDelay": "TLS fragment fallback delay",
-		"TLSRecordFragment":       "Enable TLS record fragmentation",
+		"UDPConnect":                "Use connected UDP socket",
+		"UDPTimeout":                "UDP timeout in seconds",
+		"TLSFragment":               "Enable TLS fragmentation",
+		"TLSFragmentFallbackDelay":  "TLS fragment fallback delay",
+		"TLSRecordFragment":         "Enable TLS record fragmentation",
 
 		// Rule matching fields
-		"Domain":                  "Exact domain names to match (e.g., google.com)",
-		"DomainSuffix":            "Domain suffixes to match (e.g., .google.com matches google.com and all subdomains)",
-		"DomainKeyword":           "Keywords that must appear in the domain",
-		"DomainRegex":             "Regular expressions for domain matching",
-		"Geosite":                 "Geosite categories (e.g., cn, google, facebook)",
-		"GeoIP":                   "Country codes for destination IP (e.g., CN, US)",
-		"SourceGeoIP":             "Country codes for source IP",
-		"IPCIDR":                  "IP CIDR ranges for destination (e.g., 192.168.0.0/16)",
-		"SourceIPCIDR":            "IP CIDR ranges for source",
-		"Port":                    "Destination ports to match (e.g., 80, 443)",
-		"SourcePort":              "Source ports to match",
-		"PortRange":               "Destination port ranges (e.g., 1000:2000)",
-		"SourcePortRange":         "Source port ranges",
-		"Protocol":                "Network protocols (e.g., tcp, udp)",
-		"Network":                 "Network types (e.g., tcp, udp)",
-		"Inbound":                 "Inbound tags to match",
-		"ProcessName":             "Process names to match",
-		"ProcessPath":             "Process paths to match",
-		"User":                    "User names to match",
-		"RuleSet":                 "Rule set references",
-		"Mode":                    "Logical mode: 'and' (all rules must match) or 'or' (any rule must match)",
-		"Invert":                  "Invert the rule match result",
-		"IPIsPrivate":             "Match private IP addresses",
-		"SourceIPIsPrivate":       "Match private source IP addresses",
+		"Domain":            "Exact domain names to match (e.g., google.com)",
+		"DomainSuffix":      "Domain suffixes to match (e.g., .google.com matches google.com and all subdomains)",
+		"DomainKeyword":     "Keywords that must appear in the domain",
+		"DomainRegex":       "Regular expressions for domain matching",
+		"Geosite":           "Geosite categories (e.g., cn, google, facebook)",
+		"GeoIP":             "Country codes for destination IP (e.g., CN, US)",
+		"SourceGeoIP":       "Country codes for source IP",
+		"IPCIDR":            "IP CIDR ranges for destination (e.g., 192.168.0.0/16)",
+		"SourceIPCIDR":      "IP CIDR ranges for source",
+		"Port":              "Destination ports to match (e.g., 80, 443)",
+		"SourcePort":        "Source ports to match",
+		"PortRange":         "Destination port ranges (e.g., 1000:2000)",
+		"SourcePortRange":   "Source port ranges",
+		"Protocol":          "Network protocols (e.g., tcp, udp)",
+		"Network":           "Network types (e.g., tcp, udp)",
+		"Inbound":           "Inbound tags to match",
+		"ProcessName":       "Process names to match",
+		"ProcessPath":       "Process paths to match",
+		"User":              "User names to match",
+		"RuleSet":           "Rule set references",
+		"Mode":              "Logical mode: 'and' (all rules must match) or 'or' (any rule must match)",
+		"Invert":            "Invert the rule match result",
+		"IPIsPrivate":       "Match private IP addresses",
+		"SourceIPIsPrivate": "Match private source IP addresses",
 	}
 
 	if desc, ok := descriptions[fieldName]; ok {
