@@ -8,6 +8,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/matinhimself/singbox-web-config/internal/types"
 )
 
 // Manager handles sing-box configuration management
@@ -31,32 +33,8 @@ func NewManager(configPath string) (*Manager, error) {
 	}, nil
 }
 
-// Config represents a sing-box configuration
-type Config struct {
-	Log       *LogConfig       `json:"log,omitempty"`
-	DNS       *DNSConfig       `json:"dns,omitempty"`
-	Inbounds  []interface{}    `json:"inbounds,omitempty"`
-	Outbounds []interface{}    `json:"outbounds,omitempty"`
-	Route     *RouteConfig     `json:"route,omitempty"`
-}
-
-type LogConfig struct {
-	Level      string `json:"level,omitempty"`
-	Output     string `json:"output,omitempty"`
-	Timestamp  bool   `json:"timestamp,omitempty"`
-}
-
-type DNSConfig struct {
-	Servers []interface{} `json:"servers,omitempty"`
-	Rules   []interface{} `json:"rules,omitempty"`
-	Final   string        `json:"final,omitempty"`
-}
-
-type RouteConfig struct {
-	Rules      []interface{} `json:"rules,omitempty"`
-	RuleAction []interface{} `json:"rule_action,omitempty"`
-	Final      string        `json:"final,omitempty"`
-}
+// Config is an alias to the generated type-safe Config type
+type Config = types.Config
 
 // BackupMetadata stores information about a backup
 type BackupMetadata struct {
@@ -80,7 +58,7 @@ func (m *Manager) LoadConfig() (*Config, error) {
 		if os.IsNotExist(err) {
 			// Return default config if file doesn't exist
 			return &Config{
-				Route: &RouteConfig{
+				Route: &types.RouteOptions{
 					Rules: []interface{}{},
 					Final: "direct",
 				},
@@ -206,7 +184,7 @@ func (m *Manager) UpdateRules(rules []interface{}) error {
 
 	// Ensure route section exists
 	if config.Route == nil {
-		config.Route = &RouteConfig{}
+		config.Route = &types.RouteOptions{}
 	}
 
 	// Update rules
