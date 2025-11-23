@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/matinhimself/singbox-web-config/internal/clash"
 	"github.com/matinhimself/singbox-web-config/internal/config"
@@ -32,7 +33,7 @@ type Server struct {
 }
 
 // NewServer creates a new HTTP server
-func NewServer(addr string, configPath string, singboxService string, templatesFS, staticFS embed.FS) (*Server, error) {
+func NewServer(addr string, configPath string, singboxService string, clashURL string, clashSecret string, templatesFS, staticFS embed.FS) (*Server, error) {
 	// Create config manager
 	configManager, err := config.NewManager(configPath)
 	if err != nil {
@@ -52,6 +53,9 @@ func NewServer(addr string, configPath string, singboxService string, templatesF
 	// Create form builder
 	formBuilder := forms.NewBuilder()
 
+	// Format and validate Clash URL
+	formattedClashURL := formatClashURL(clashURL)
+
 	s := &Server{
 		addr:           addr,
 		mux:            http.NewServeMux(),
@@ -60,6 +64,14 @@ func NewServer(addr string, configPath string, singboxService string, templatesF
 		formBuilder:    formBuilder,
 		templatesFS:    templatesFS,
 		staticFS:       staticFS,
+		clashURL:       formattedClashURL,
+		clashSecret:    clashSecret,
+	}
+
+	// Initialize Clash client if URL is provided
+	if formattedClashURL != "" {
+		s.clashClient = clash.NewClient(formattedClashURL, clashSecret)
+		log.Printf("Clash API client initialized: %s", formattedClashURL)
 	}
 
 	// Load templates
@@ -178,4 +190,18 @@ func (s *Server) Stop() {
 // renderTemplate renders a template with the given data
 func (s *Server) renderTemplate(w http.ResponseWriter, name string, data interface{}) error {
 	return s.templates.ExecuteTemplate(w, name, data)
+}
+
+// formatClashURL ensures the Clash URL has proper http:// prefix
+func formatClashURL(url string) string {
+	if url == "" {
+		return ""
+	}
+
+	// Add http:// prefix if no protocol is specified
+	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
+		url = "http://" + url
+	}
+
+	return url
 }
