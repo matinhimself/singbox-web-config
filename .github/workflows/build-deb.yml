@@ -65,23 +65,19 @@ jobs:
           go build -v -trimpath \
             -ldflags="-s -w -X main.Version=${{ steps.version.outputs.version }}" \
             -o singbox-web-config-server \
-            ./cmd/server/main.go
+            ./cmd/server
 
       - name: Prepare DEB package structure
         run: |
           PKG_DIR="singbox-web-config_${{ steps.version.outputs.version }}_${{ matrix.arch }}"
           mkdir -p "${PKG_DIR}/DEBIAN"
           mkdir -p "${PKG_DIR}/usr/local/bin/singbox-web-config"
-          mkdir -p "${PKG_DIR}/usr/local/bin/singbox-web-config/webassets"
           mkdir -p "${PKG_DIR}/etc/systemd/system"
           mkdir -p "${PKG_DIR}/usr/share/doc/singbox-web-config"
 
-          # Copy binary
+          # Copy binary (assets are embedded via go:embed)
           cp singbox-web-config-server "${PKG_DIR}/usr/local/bin/singbox-web-config/"
           chmod +x "${PKG_DIR}/usr/local/bin/singbox-web-config/singbox-web-config-server"
-
-          # Copy webassets assets
-          cp -r webassets/* "${PKG_DIR}/usr/local/bin/singbox-web-config/webassets/"
 
           # Copy systemd service
           cp deploy/singbox-web-config.service "${PKG_DIR}/etc/systemd/system/"
