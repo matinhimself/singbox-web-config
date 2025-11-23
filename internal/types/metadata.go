@@ -12,7 +12,7 @@ var Metadata = struct {
 	GeneratorVersion string
 	TypesGenerated   int
 }{
-	Timestamp:        time.Unix(1763930233, 0),
+	Timestamp:        time.Unix(1763930699, 0),
 	SingBoxCommit:    "877e7a8",
 	SingBoxBranch:    "dev-next",
 	GeneratorVersion: "0.1.0",
