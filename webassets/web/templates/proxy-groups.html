@@ -2,51 +2,56 @@
 {{if .Groups}}
 <div class="proxy-groups">
     {{range .Groups}}
-    <div class="proxy-group-card">
-        <div class="proxy-group-header">
-            <div>
-                <h3 class="proxy-group-title">{{.Name}}</h3>
-                <span class="proxy-type-badge">{{.Type}}</span>
+    <div class="proxy-group-card" data-group-type="{{.Type}}">
+        <div class="proxy-group-header" onclick="toggleGroup(this)">
+            <div style="display: flex; align-items: center; gap: 1rem; flex: 1;">
+                <span class="toggle-icon">▼</span>
+                <div>
+                    <h3 class="proxy-group-title">{{.Name}}</h3>
+                    <span class="proxy-type-badge">{{.Type}}</span>
+                </div>
             </div>
-            {{if .CanSwitch}}
-            <button class="button button-small"
-                    onclick="testGroupDelay('{{.Name}}', this)"
-                    title="Test all proxies in this group">
-                Test Speed
-            </button>
-            {{end}}
-        </div>
-
-        {{if .Now}}
-        <div style="margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.875rem;">
-            Current: <strong style="color: var(--success-color);">{{.Now}}</strong>
-        </div>
-        {{end}}
-
-        <div class="proxy-nodes">
-            {{range .Proxies}}
-            <div class="proxy-node {{if .IsNow}}active{{end}}"
-                 {{if $.CanSwitch}}
-                 hx-post="/api/proxies/switch"
-                 hx-vals='{"group": "{{$.Name}}", "proxy": "{{.Name}}"}'
-                 hx-target="#proxies-content"
-                 hx-indicator="#loading-indicator"
-                 {{end}}>
-                <div class="proxy-node-name">{{.Name}}</div>
-                {{if .Delay}}
-                <div class="proxy-node-delay {{if lt .Delay 200}}fast{{else if lt .Delay 500}}medium{{else}}slow{{end}}">
-                    {{.Delay}}ms
-                </div>
-                {{else}}
-                <div class="proxy-node-delay">-</div>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                {{if .Now}}
+                <span class="current-proxy-badge">{{.Now}}</span>
                 {{end}}
-                {{if .Type}}
-                <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">
-                    {{.Type}}
-                </div>
+                {{if .CanSwitch}}
+                <button class="button button-small"
+                        onclick="event.stopPropagation(); testGroupDelay('{{.Name}}', this)"
+                        title="Test all proxies in this group">
+                    ⚡ Test
+                </button>
                 {{end}}
             </div>
-            {{end}}
+        </div>
+
+        <div class="proxy-nodes-container">
+            <div class="proxy-nodes">
+                {{range .Proxies}}
+                <div class="proxy-node {{if .IsNow}}active{{end}}"
+                     {{if $.CanSwitch}}
+                     hx-post="/api/proxies/switch"
+                     hx-vals='{"group": "{{$.Name}}", "proxy": "{{.Name}}"}'
+                     hx-target="#proxies-content"
+                     hx-indicator="#loading-indicator"
+                     title="Click to switch to {{.Name}}"
+                     {{end}}>
+                    <div class="proxy-node-name">{{.Name}}</div>
+                    {{if .Delay}}
+                    <div class="proxy-node-delay {{if lt .Delay 200}}fast{{else if lt .Delay 500}}medium{{else}}slow{{end}}">
+                        {{.Delay}}ms
+                    </div>
+                    {{else}}
+                    <div class="proxy-node-delay">-</div>
+                    {{end}}
+                    {{if .Type}}
+                    <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">
+                        {{.Type}}
+                    </div>
+                    {{end}}
+                </div>
+                {{end}}
+            </div>
         </div>
     </div>
     {{end}}
@@ -60,6 +65,60 @@
 {{end}}
 
 <script>
+// Toggle group expand/collapse
+function toggleGroup(header) {
+    const card = header.closest('.proxy-group-card');
+    const container = card.querySelector('.proxy-nodes-container');
+    const icon = card.querySelector('.toggle-icon');
+
+    if (container.style.display === 'none') {
+        container.style.display = 'block';
+        icon.textContent = '▼';
+        card.classList.remove('collapsed');
+    } else {
+        container.style.display = 'none';
+        icon.textContent = '▶';
+        card.classList.add('collapsed');
+    }
+}
+
+// Sort proxy groups on load
+document.addEventListener('DOMContentLoaded', function() {
+    sortProxyGroups();
+});
+
+// Sort after HTMX swap
+document.body.addEventListener('htmx:afterSwap', function(event) {
+    if (event.detail.target.id === 'proxies-content') {
+        sortProxyGroups();
+    }
+});
+
+function sortProxyGroups() {
+    const container = document.querySelector('.proxy-groups');
+    if (!container) return;
+
+    const groups = Array.from(container.querySelectorAll('.proxy-group-card'));
+
+    // Sort: Selector first, then alphabetically by name
+    groups.sort((a, b) => {
+        const typeA = a.dataset.groupType;
+        const typeB = b.dataset.groupType;
+
+        // Selector types come first
+        if (typeA === 'Selector' && typeB !== 'Selector') return -1;
+        if (typeA !== 'Selector' && typeB === 'Selector') return 1;
+
+        // Then sort alphabetically by title
+        const nameA = a.querySelector('.proxy-group-title').textContent;
+        const nameB = b.querySelector('.proxy-group-title').textContent;
+        return nameA.localeCompare(nameB);
+    });
+
+    // Re-append in sorted order
+    groups.forEach(group => container.appendChild(group));
+}
+
 function testGroupDelay(groupName, button) {
     button.disabled = true;
     button.textContent = 'Testing...';
@@ -98,16 +157,79 @@ function testGroupDelay(groupName, button) {
             }
 
             button.disabled = false;
-            button.textContent = 'Test Speed';
+            button.textContent = '⚡ Test';
         })
         .catch(error => {
             console.error('Error testing delays:', error);
             button.disabled = false;
             button.textContent = 'Test Failed';
             setTimeout(() => {
-                button.textContent = 'Test Speed';
+                button.textContent = '⚡ Test';
             }, 2000);
         });
 }
 </script>
+
+<style>
+.proxy-group-header {
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid var(--border);
+    transition: background-color 0.2s;
+}
+
+.proxy-group-header:hover {
+    background-color: var(--background);
+    margin: -0.5rem;
+    padding: 0.5rem;
+    padding-bottom: 1.25rem;
+    border-radius: 6px;
+}
+
+.toggle-icon {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    transition: transform 0.2s;
+    display: inline-block;
+    min-width: 1rem;
+}
+
+.proxy-group-card.collapsed .toggle-icon {
+    transform: rotate(-90deg);
+}
+
+.proxy-nodes-container {
+    display: block;
+    transition: all 0.3s ease;
+}
+
+.current-proxy-badge {
+    padding: 0.25rem 0.625rem;
+    background: #ecfdf5;
+    color: var(--success-color);
+    border: 1px solid #a7f3d0;
+    border-radius: 12px;
+    font-size: 0.813rem;
+    font-weight: 500;
+    font-family: monospace;
+}
+
+.proxy-group-card.collapsed {
+    opacity: 0.8;
+}
+
+.proxy-node {
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.proxy-node:active {
+    transform: scale(0.95);
+}
+</style>
 {{end}}
