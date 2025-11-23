@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"html/template"
 )
 
@@ -10,11 +11,12 @@ import (
 // FuncMap returns custom template functions
 func templateFuncMap() template.FuncMap {
 	return template.FuncMap{
-		"add":        add,
-		"marshal":    marshal,
+		"add":         add,
+		"marshal":     marshal,
 		"derefString": derefString,
 		"derefUint32": derefUint32,
-		"strPtrEq":   strPtrEq,
+		"strPtrEq":    strPtrEq,
+		"dict":        dict,
 	}
 }
 
@@ -55,4 +57,23 @@ func strPtrEq(s *string, val string) bool {
 		return false
 	}
 	return *s == val
+}
+
+// dict creates a map from alternating key-value pairs
+// Example: dict "key1" "value1" "key2" "value2" -> map[string]interface{}{"key1": "value1", "key2": "value2"}
+func dict(values ...interface{}) (map[string]interface{}, error) {
+	if len(values)%2 != 0 {
+		return nil, fmt.Errorf("dict requires an even number of arguments")
+	}
+
+	result := make(map[string]interface{}, len(values)/2)
+	for i := 0; i < len(values); i += 2 {
+		key, ok := values[i].(string)
+		if !ok {
+			return nil, fmt.Errorf("dict keys must be strings")
+		}
+		result[key] = values[i+1]
+	}
+
+	return result, nil
 }
