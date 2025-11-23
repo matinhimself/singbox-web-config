@@ -1,59 +1,49 @@
 {{define "proxy-groups.html"}}
 {{if .Groups}}
-<div class="proxy-groups">
+<div class="space-y-6">
     {{range .Groups}}
-    <div class="proxy-group-card" data-group-type="{{.Type}}">
-        <div class="proxy-group-header" onclick="toggleGroup(this)">
-            <div style="display: flex; align-items: center; gap: 1rem; flex: 1;">
-                <span class="toggle-icon">▼</span>
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md" data-group-type="{{.Type}}">
+        <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center cursor-pointer" onclick="toggleGroup(this)">
+            <div class="flex items-center space-x-4">
+                <span class="toggle-icon text-gray-500 dark:text-gray-400 transform transition-transform">▼</span>
                 <div>
-                    <h3 class="proxy-group-title">{{.Name}}</h3>
-                    <span class="proxy-type-badge">{{.Type}}</span>
+                    <h3 class="font-bold text-xl text-gray-900 dark:text-white">{{.Name}}</h3>
+                    <span class="text-sm text-gray-500 dark:text-gray-400">{{.Type}}</span>
                 </div>
             </div>
-            <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <div class="flex items-center space-x-2">
                 {{if .Now}}
-                <span class="current-proxy-badge">{{.Now}}</span>
+                <span class="px-2 py-1 text-xs font-mono font-semibold text-green-800 bg-green-100 dark:bg-green-900 dark:text-green-300 rounded-full">{{.Now}}</span>
                 {{end}}
                 {{if .CanSwitch}}
-                <button class="button button-small"
-                        onclick="event.stopPropagation(); testGroupDelay('{{.Name}}', this)"
-                        title="Test all proxies in this group">
+                <button class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-1 px-3 rounded text-sm"
+                        onclick="event.stopPropagation(); testGroupDelay('{{.Name}}', this)">
                     ⚡ Test
                 </button>
                 {{end}}
             </div>
         </div>
 
-        <div class="proxy-nodes-container">
-            <div class="proxy-nodes">
+        <div class="proxy-nodes-container p-4 hidden">
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                 {{range .Proxies}}
-                <div class="proxy-node {{if .IsNow}}active{{end}}"
-                     {{if $.CanSwitch}}
+                <div class="relative p-3 rounded-lg border-2 transition-all
+                    {{if .IsNow}} border-green-500 bg-green-50 dark:bg-green-900/20 {{else}} border-gray-300 dark:border-gray-600 hover:border-blue-500 dark:hover:border-blue-400 {{end}}
+                    {{if $.CanSwitch}} cursor-pointer {{else}} cursor-not-allowed opacity-60 {{end}}"
                      hx-post="/api/proxies/switch"
-                     hx-vals='js:{group: "{{$.Name}}", proxy: "{{.Name}}"}'
+                     hx-vals='{"group": "{{$.Name}}", "proxy": "{{.Name}}"}'
+                     hx-trigger="{{if $.CanSwitch}}click{{else}}never{{end}}"
                      hx-target="#proxies-content"
-                     hx-indicator="#loading-indicator"
-                     hx-swap="outerHTML"
-                     title="Click to switch to {{.Name}}"
-                     style="{{if $.CanSwitch}}cursor: pointer;{{end}}"
-                     {{else}}
-                     style="cursor: not-allowed; opacity: 0.6;"
-                     title="Cannot switch - {{$.Type}} group"
-                     {{end}}>
-                    <div class="proxy-node-name">{{.Name}}</div>
-                    {{if .Delay}}
-                    <div class="proxy-node-delay {{if lt .Delay 200}}fast{{else if lt .Delay 500}}medium{{else}}slow{{end}}">
-                        {{.Delay}}ms
-                    </div>
-                    {{else}}
-                    <div class="proxy-node-delay">-</div>
-                    {{end}}
-                    {{if .Type}}
-                    <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">
-                        {{.Type}}
-                    </div>
-                    {{end}}
+                     hx-swap="innerHTML"
+                     hx-indicator="#proxies-content">
+                    <p class="font-semibold text-sm truncate text-center text-gray-800 dark:text-gray-200">{{.Name}}</p>
+                    <p class="text-xs text-center
+                        {{if and .Delay (lt .Delay 200)}} text-green-600 dark:text-green-400
+                        {{else if and .Delay (lt .Delay 500)}} text-yellow-600 dark:text-yellow-400
+                        {{else if .Delay}} text-red-600 dark:text-red-400
+                        {{else}} text-gray-500 dark:text-gray-400 {{end}}">
+                        {{if .Delay}}{{.Delay}}ms{{else}}-{{end}}
+                    </p>
                 </div>
                 {{end}}
             </div>
@@ -62,196 +52,59 @@
     {{end}}
 </div>
 {{else}}
-<div class="no-proxies">
-    <div class="no-proxies-icon">🔌</div>
-    <h3>No Proxy Groups Found</h3>
-    <p>Make sure your Clash API is configured correctly and running.</p>
+<div class="text-center py-16">
+    <div class="text-6xl mb-4">🔌</div>
+    <h3 class="text-2xl font-bold">No Proxy Groups Found</h3>
+    <p class="text-gray-500 dark:text-gray-400 mt-2">Make sure your Clash API is configured correctly and running.</p>
 </div>
 {{end}}
 
 <script>
-// Debug HTMX events
-document.body.addEventListener('htmx:beforeRequest', function(event) {
-    console.log('HTMX Request:', event.detail);
-});
-
-document.body.addEventListener('htmx:afterRequest', function(event) {
-    console.log('HTMX Response:', event.detail);
-    if (!event.detail.successful) {
-        console.error('HTMX request failed:', event.detail);
-    }
-});
-
-document.body.addEventListener('htmx:responseError', function(event) {
-    console.error('HTMX Error:', event.detail);
-    alert('Failed to switch proxy: ' + (event.detail.xhr.responseText || 'Unknown error'));
-});
-
-// Toggle group expand/collapse
 function toggleGroup(header) {
-    const card = header.closest('.proxy-group-card');
+    const card = header.closest('.bg-white');
     const container = card.querySelector('.proxy-nodes-container');
     const icon = card.querySelector('.toggle-icon');
-
-    if (container.style.display === 'none') {
-        container.style.display = 'block';
-        icon.textContent = '▼';
-        card.classList.remove('collapsed');
-    } else {
-        container.style.display = 'none';
-        icon.textContent = '▶';
-        card.classList.add('collapsed');
-    }
-}
-
-// Sort proxy groups on load
-document.addEventListener('DOMContentLoaded', function() {
-    sortProxyGroups();
-});
-
-// Sort after HTMX swap
-document.body.addEventListener('htmx:afterSwap', function(event) {
-    if (event.detail.target.id === 'proxies-content') {
-        sortProxyGroups();
-    }
-});
-
-function sortProxyGroups() {
-    const container = document.querySelector('.proxy-groups');
-    if (!container) return;
-
-    const groups = Array.from(container.querySelectorAll('.proxy-group-card'));
-
-    // Sort: Selector first, then alphabetically by name
-    groups.sort((a, b) => {
-        const typeA = a.dataset.groupType;
-        const typeB = b.dataset.groupType;
-
-        // Selector types come first
-        if (typeA === 'Selector' && typeB !== 'Selector') return -1;
-        if (typeA !== 'Selector' && typeB === 'Selector') return 1;
-
-        // Then sort alphabetically by title
-        const nameA = a.querySelector('.proxy-group-title').textContent;
-        const nameB = b.querySelector('.proxy-group-title').textContent;
-        return nameA.localeCompare(nameB);
-    });
-
-    // Re-append in sorted order
-    groups.forEach(group => container.appendChild(group));
+    container.classList.toggle('hidden');
+    icon.classList.toggle('rotate-[-90deg]');
 }
 
 function testGroupDelay(groupName, button) {
+    const originalText = button.innerHTML;
     button.disabled = true;
-    button.textContent = 'Testing...';
+    button.innerHTML = '<span class="animate-spin inline-block w-4 h-4 border-2 border-white rounded-full border-t-transparent"></span>';
 
     fetch(`/api/proxies/group-delay-test?group=${encodeURIComponent(groupName)}`)
         .then(response => response.json())
         .then(data => {
-            console.log('Delay test results:', data);
-
-            // Update the UI with delay results
-            if (data.results) {
-                data.results.forEach(result => {
-                    const nodes = document.querySelectorAll('.proxy-node');
-                    nodes.forEach(node => {
-                        const nameEl = node.querySelector('.proxy-node-name');
-                        if (nameEl && nameEl.textContent === result.name) {
-                            const delayEl = node.querySelector('.proxy-node-delay');
-                            if (delayEl) {
-                                if (result.error) {
-                                    delayEl.textContent = 'Timeout';
-                                    delayEl.className = 'proxy-node-delay slow';
-                                } else {
-                                    delayEl.textContent = result.delay + 'ms';
-                                    if (result.delay < 200) {
-                                        delayEl.className = 'proxy-node-delay fast';
-                                    } else if (result.delay < 500) {
-                                        delayEl.className = 'proxy-node-delay medium';
-                                    } else {
-                                        delayEl.className = 'proxy-node-delay slow';
-                                    }
-                                }
-                            }
-                        }
-                    });
-                });
-            }
-
-            button.disabled = false;
-            button.textContent = '⚡ Test';
+            htmx.trigger('#proxies-content', 'load');
         })
         .catch(error => {
             console.error('Error testing delays:', error);
-            button.disabled = false;
-            button.textContent = 'Test Failed';
+            button.innerHTML = 'Error';
             setTimeout(() => {
-                button.textContent = '⚡ Test';
+                button.innerHTML = originalText;
+                button.disabled = false;
             }, 2000);
         });
 }
+
+document.body.addEventListener('htmx:afterSwap', function(event) {
+    if (event.detail.target.id === 'proxies-content') {
+        const container = document.querySelector('.space-y-6');
+        if (!container) return;
+
+        const groups = Array.from(container.children);
+        groups.sort((a, b) => {
+            const typeA = a.dataset.groupType;
+            const typeB = b.dataset.groupType;
+            if (typeA === 'Selector' && typeB !== 'Selector') return -1;
+            if (typeA !== 'Selector' && typeB === 'Selector') return 1;
+            const nameA = a.querySelector('h3').textContent;
+            const nameB = b.querySelector('h3').textContent;
+            return nameA.localeCompare(nameB);
+        });
+        groups.forEach(group => container.appendChild(group));
+    }
+});
 </script>
-
-<style>
-.proxy-group-header {
-    cursor: pointer;
-    user-select: none;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-    padding-bottom: 0.75rem;
-    border-bottom: 2px solid var(--border);
-    transition: background-color 0.2s;
-}
-
-.proxy-group-header:hover {
-    background-color: var(--background);
-    margin: -0.5rem;
-    padding: 0.5rem;
-    padding-bottom: 1.25rem;
-    border-radius: 6px;
-}
-
-.toggle-icon {
-    font-size: 0.875rem;
-    color: var(--text-secondary);
-    transition: transform 0.2s;
-    display: inline-block;
-    min-width: 1rem;
-}
-
-.proxy-group-card.collapsed .toggle-icon {
-    transform: rotate(-90deg);
-}
-
-.proxy-nodes-container {
-    display: block;
-    transition: all 0.3s ease;
-}
-
-.current-proxy-badge {
-    padding: 0.25rem 0.625rem;
-    background: #ecfdf5;
-    color: var(--success-color);
-    border: 1px solid #a7f3d0;
-    border-radius: 12px;
-    font-size: 0.813rem;
-    font-weight: 500;
-    font-family: monospace;
-}
-
-.proxy-group-card.collapsed {
-    opacity: 0.8;
-}
-
-.proxy-node {
-    cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.proxy-node:active {
-    transform: scale(0.95);
-}
-</style>
 {{end}}

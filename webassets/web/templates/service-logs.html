@@ -1,25 +1,25 @@
 {{define "service-logs.html"}}
-<div class="logs-container">
-    <div class="logs-header">
-        <button class="button button-small"
+<div>
+    <div class="flex space-x-2 mb-4">
+        <button class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-1 px-3 rounded text-sm"
                 hx-get="/api/service/logs?lines=50"
                 hx-target="#service-logs"
                 hx-swap="innerHTML">
-            Last 50 lines
+            50 lines
         </button>
-        <button class="button button-small"
+        <button class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-1 px-3 rounded text-sm"
                 hx-get="/api/service/logs?lines=100"
                 hx-target="#service-logs"
                 hx-swap="innerHTML">
-            Last 100 lines
+            100 lines
         </button>
-        <button class="button button-small"
+        <button class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-1 px-3 rounded text-sm"
                 hx-get="/api/service/logs?lines=200"
                 hx-target="#service-logs"
                 hx-swap="innerHTML">
-            Last 200 lines
+            200 lines
         </button>
     </div>
-    <pre class="logs-content">{{.Logs}}</pre>
+    <pre class="bg-gray-900 text-white text-xs p-4 rounded-md overflow-x-auto h-64">{{.Logs}}</pre>
 </div>
 {{end}}

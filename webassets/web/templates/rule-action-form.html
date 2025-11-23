@@ -1,300 +1,182 @@
 {{define "rule-action-form.html"}}
-<div class="modal-overlay" id="rule-action-form-modal">
-    <div class="modal">
-        <div class="modal-header">
-            <h2>{{if .EditMode}}Edit Rule Action{{else}}Add Rule Action{{end}}</h2>
-            <button class="close-button" onclick="document.getElementById('rule-action-form-modal').remove()">×</button>
+<div class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50" id="rule-action-form-modal">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div class="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+            <h2 class="text-2xl font-bold">{{if .EditMode}}Edit Rule Action{{else}}Add Rule Action{{end}}</h2>
+            <button class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200" onclick="document.getElementById('rule-action-form-modal').remove()">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
         </div>
 
         <form hx-post="{{if .EditMode}}/api/rule-actions/update{{else}}/api/rule-actions/create{{end}}"
               hx-target="#rule-actions-list"
               hx-swap="innerHTML"
-              class="rule-action-form"
+              class="p-6 space-y-6"
               onsubmit="closeActionModalOnSuccess(event)">
             {{if .EditMode}}
             <input type="hidden" name="index" value="{{.ActionIndex}}">
             {{end}}
 
-            <!-- Action Type Selector -->
-            <div class="form-group">
-                <label for="action_type">
-                    Action Type <span class="required">*</span>
-                </label>
-                <select name="action" id="action_type" required onchange="updateActionTypeFields()">
+            <div>
+                <label for="action_type" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Action Type <span class="text-red-500">*</span></label>
+                <select name="action" id="action_type" required onchange="updateActionTypeFields()" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
                     <option value="">-- Select Action Type --</option>
-                    <option value="route" {{if eq .Action.Type "route"}}selected{{end}}>Route (to outbound)</option>
-                    <option value="sniff" {{if eq .Action.Type "sniff"}}selected{{end}}>Sniff (protocol detection)</option>
-                    <option value="resolve" {{if eq .Action.Type "resolve"}}selected{{end}}>Resolve (DNS resolution)</option>
-                    <option value="reject" {{if eq .Action.Type "reject"}}selected{{end}}>Reject (block traffic)</option>
-                    <option value="route-options" {{if eq .Action.Type "route-options"}}selected{{end}}>Route Options (advanced)</option>
+                    <option value="route" {{if eq .Action.Type "route"}}selected{{end}}>Route</option>
+                    <option value="sniff" {{if eq .Action.Type "sniff"}}selected{{end}}>Sniff</option>
+                    <option value="resolve" {{if eq .Action.Type "resolve"}}selected{{end}}>Resolve</option>
+                    <option value="reject" {{if eq .Action.Type "reject"}}selected{{end}}>Reject</option>
+                    <option value="route-options" {{if eq .Action.Type "route-options"}}selected{{end}}>Route Options</option>
                     <option value="hijack-dns" {{if eq .Action.Type "hijack-dns"}}selected{{end}}>Hijack DNS</option>
                 </select>
-                <small class="help-text">Select the type of action to configure</small>
             </div>
 
-            <!-- Route Action Fields -->
-            <div class="action-fields" id="route-fields" style="display: none;">
-                <h3>Route Action Configuration</h3>
-                <div class="form-group">
-                    <label for="outbound">
-                        Outbound <span class="required">*</span>
-                    </label>
-                    <select name="outbound" id="outbound">
-                        <option value="">Select outbound...</option>
-                        {{range .Outbounds}}
-                        <option value="{{.}}" {{if eq . $.Action.Outbound}}selected{{end}}>{{.}}</option>
-                        {{end}}
-                    </select>
-                    <small class="help-text">Target outbound to route traffic to</small>
-                </div>
+            <div id="action-fields-container" class="space-y-6">
+                <!-- Fields for each action type will be loaded here by script -->
             </div>
 
-            <!-- Sniff Action Fields -->
-            <div class="action-fields" id="sniff-fields" style="display: none;">
-                <h3>Sniff Action Configuration</h3>
-                <div class="form-group">
-                    <label for="sniffer">Enabled Sniffers</label>
-                    <div class="array-field-container" id="array-sniffer">
-                        {{if .Action.Sniffer}}
-                            {{range .Action.Sniffer}}
-                            <div class="array-field-item">
-                                <input type="text" name="sniffer[]" value="{{.}}" placeholder="e.g., tls, http, quic">
-                                <button type="button" class="button button-small button-danger" onclick="removeArrayField(this)">-</button>
-                            </div>
-                            {{end}}
-                        {{else}}
-                            <div class="array-field-item">
-                                <input type="text" name="sniffer[]" placeholder="e.g., tls, http, quic">
-                                <button type="button" class="button button-small button-danger" onclick="removeArrayField(this)">-</button>
-                            </div>
-                        {{end}}
-                    </div>
-                    <button type="button" class="button button-small" onclick="addArrayField('array-sniffer', 'sniffer', 'e.g., tls, http, quic', false, [])">+ Add</button>
-                    <small class="help-text">Leave empty to enable all sniffers</small>
-                </div>
-
-                <div class="form-group">
-                    <label for="timeout">Timeout (ms)</label>
-                    <input type="number" name="timeout" id="timeout" value="{{.Action.Timeout}}" placeholder="e.g., 300">
-                    <small class="help-text">Sniffing timeout in milliseconds</small>
-                </div>
-            </div>
-
-            <!-- Resolve Action Fields -->
-            <div class="action-fields" id="resolve-fields" style="display: none;">
-                <h3>Resolve Action Configuration</h3>
-                <div class="form-group">
-                    <label for="server">DNS Server</label>
-                    <input type="text" name="server" id="server" value="{{.Action.Server}}" placeholder="e.g., local">
-                    <small class="help-text">DNS server tag to use for resolution</small>
-                </div>
-
-                <div class="form-group">
-                    <label for="strategy">Resolution Strategy</label>
-                    <select name="strategy" id="strategy">
-                        <option value="">-- Default --</option>
-                        <option value="prefer_ipv4" {{if eq .Action.Strategy "prefer_ipv4"}}selected{{end}}>Prefer IPv4</option>
-                        <option value="prefer_ipv6" {{if eq .Action.Strategy "prefer_ipv6"}}selected{{end}}>Prefer IPv6</option>
-                        <option value="ipv4_only" {{if eq .Action.Strategy "ipv4_only"}}selected{{end}}>IPv4 Only</option>
-                        <option value="ipv6_only" {{if eq .Action.Strategy "ipv6_only"}}selected{{end}}>IPv6 Only</option>
-                    </select>
-                    <small class="help-text">DNS resolution strategy</small>
-                </div>
-
-                <div class="form-group">
-                    <label for="disable_cache">
-                        <input type="checkbox" name="disable_cache" id="disable_cache" {{if .Action.DisableCache}}checked{{end}}>
-                        Disable Cache
-                    </label>
-                    <small class="help-text">Disable DNS caching for this action</small>
-                </div>
-
-                <div class="form-group">
-                    <label for="rewrite_ttl">Rewrite TTL (seconds)</label>
-                    <input type="number" name="rewrite_ttl" id="rewrite_ttl" value="{{derefUint32 .Action.RewriteTTL}}" placeholder="e.g., 3600">
-                    <small class="help-text">Override DNS response TTL</small>
-                </div>
-
-                <div class="form-group">
-                    <label for="client_subnet">Client Subnet</label>
-                    <input type="text" name="client_subnet" id="client_subnet" value="{{derefString .Action.ClientSubnet}}" placeholder="e.g., 1.1.1.1/24">
-                    <small class="help-text">EDNS Client Subnet (ECS)</small>
-                </div>
-            </div>
-
-            <!-- Reject Action Fields -->
-            <div class="action-fields" id="reject-fields" style="display: none;">
-                <h3>Reject Action Configuration</h3>
-                <div class="form-group">
-                    <label for="method">Reject Method</label>
-                    <select name="method" id="method">
-                        <option value="">-- Default --</option>
-                        <option value="default" {{if eq .Action.Method "default"}}selected{{end}}>Default</option>
-                        <option value="drop" {{if eq .Action.Method "drop"}}selected{{end}}>Drop</option>
-                    </select>
-                    <small class="help-text">Method to use for rejecting connections</small>
-                </div>
-
-                <div class="form-group">
-                    <label for="no_drop">
-                        <input type="checkbox" name="no_drop" id="no_drop" {{if .Action.NoDrop}}checked{{end}}>
-                        No Drop
-                    </label>
-                    <small class="help-text">Don't drop the connection</small>
-                </div>
-            </div>
-
-            <!-- Route Options Action Fields -->
-            <div class="action-fields" id="route-options-fields" style="display: none;">
-                <h3>Route Options Configuration</h3>
-                <div class="form-group">
-                    <label for="outbound_options">Outbound</label>
-                    <select name="outbound" id="outbound_options">
-                        <option value="">Select outbound...</option>
-                        {{range .Outbounds}}
-                        <option value="{{.}}" {{if eq . $.Action.Outbound}}selected{{end}}>{{.}}</option>
-                        {{end}}
-                    </select>
-                    <small class="help-text">Target outbound (optional for route-options)</small>
-                </div>
-
-                <div class="form-group">
-                    <label for="override_address">Override Address</label>
-                    <input type="text" name="override_address" id="override_address" value="{{.Action.OverrideAddress}}" placeholder="e.g., 1.1.1.1">
-                    <small class="help-text">Override destination address</small>
-                </div>
-
-                <div class="form-group">
-                    <label for="override_port">Override Port</label>
-                    <input type="number" name="override_port" id="override_port" value="{{.Action.OverridePort}}" placeholder="e.g., 443">
-                    <small class="help-text">Override destination port</small>
-                </div>
-
-                <div class="form-group">
-                    <label for="network_strategy">Network Strategy</label>
-                    <select name="network_strategy" id="network_strategy">
-                        <option value="">-- Default --</option>
-                        <option value="prefer_ipv4" {{if strPtrEq .Action.NetworkStrategy "prefer_ipv4"}}selected{{end}}>Prefer IPv4</option>
-                        <option value="prefer_ipv6" {{if strPtrEq .Action.NetworkStrategy "prefer_ipv6"}}selected{{end}}>Prefer IPv6</option>
-                        <option value="ipv4_only" {{if strPtrEq .Action.NetworkStrategy "ipv4_only"}}selected{{end}}>IPv4 Only</option>
-                        <option value="ipv6_only" {{if strPtrEq .Action.NetworkStrategy "ipv6_only"}}selected{{end}}>IPv6 Only</option>
-                    </select>
-                    <small class="help-text">Network strategy for this route</small>
-                </div>
-
-                <div class="form-group">
-                    <label for="fallback_delay">Fallback Delay (ms)</label>
-                    <input type="number" name="fallback_delay" id="fallback_delay" value="{{.Action.FallbackDelay}}" placeholder="e.g., 300">
-                    <small class="help-text">Delay before fallback in milliseconds</small>
-                </div>
-
-                <div class="form-group">
-                    <label for="udp_timeout">UDP Timeout (seconds)</label>
-                    <input type="number" name="udp_timeout" id="udp_timeout" value="{{.Action.UDPTimeout}}" placeholder="e.g., 300">
-                    <small class="help-text">UDP connection timeout</small>
-                </div>
-
-                <div class="form-group">
-                    <label>
-                        <input type="checkbox" name="udp_disable_domain_unmapping" {{if .Action.UDPDisableDomainUnmapping}}checked{{end}}>
-                        UDP Disable Domain Unmapping
-                    </label>
-                </div>
-
-                <div class="form-group">
-                    <label>
-                        <input type="checkbox" name="udp_connect" {{if .Action.UDPConnect}}checked{{end}}>
-                        UDP Connect
-                    </label>
-                </div>
-
-                <div class="form-group">
-                    <label>
-                        <input type="checkbox" name="tls_fragment" {{if .Action.TLSFragment}}checked{{end}}>
-                        TLS Fragment
-                    </label>
-                </div>
-
-                <div class="form-group">
-                    <label for="tls_fragment_fallback_delay">TLS Fragment Fallback Delay (ms)</label>
-                    <input type="number" name="tls_fragment_fallback_delay" id="tls_fragment_fallback_delay" value="{{.Action.TLSFragmentFallbackDelay}}" placeholder="e.g., 300">
-                </div>
-
-                <div class="form-group">
-                    <label>
-                        <input type="checkbox" name="tls_record_fragment" {{if .Action.TLSRecordFragment}}checked{{end}}>
-                        TLS Record Fragment
-                    </label>
-                </div>
-            </div>
-
-            <!-- Hijack DNS Fields -->
-            <div class="action-fields" id="hijack-dns-fields" style="display: none;">
-                <h3>Hijack DNS Configuration</h3>
-                <p class="help-text">This action hijacks DNS requests. No additional configuration needed.</p>
-            </div>
-
-            <div class="form-actions">
-                <button type="submit" class="button button-primary">{{if .EditMode}}Update Action{{else}}Create Action{{end}}</button>
-                <button type="button" class="button" onclick="document.getElementById('rule-action-form-modal').remove()">Cancel</button>
+            <div class="pt-6 border-t border-gray-200 dark:border-gray-700 flex justify-end space-x-2">
+                <button type="button" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded" onclick="document.getElementById('rule-action-form-modal').remove()">Cancel</button>
+                <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">{{if .EditMode}}Update Action{{else}}Create Action{{end}}</button>
             </div>
         </form>
     </div>
 </div>
 
+<template id="route-fields-template">
+    <div class="space-y-4">
+        <h3 class="text-lg font-medium text-gray-900 dark:text-white">Route Action</h3>
+        <div>
+            <label for="outbound" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Outbound <span class="text-red-500">*</span></label>
+            <select name="outbound" id="outbound" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+                <option value="">Select outbound...</option>
+                {{range .Outbounds}}
+                <option value="{{.}}" {{if eq . $.Action.Outbound}}selected{{end}}>{{.}}</option>
+                {{end}}
+            </select>
+        </div>
+    </div>
+</template>
+
+<template id="sniff-fields-template">
+    <div class="space-y-4">
+        <h3 class="text-lg font-medium text-gray-900 dark:text-white">Sniff Action</h3>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Enabled Sniffers</label>
+            <div id="array-sniffer" class="space-y-2">
+                {{if .Action.Sniffer}}
+                    {{range .Action.Sniffer}}
+                    <div class="flex items-center space-x-2">
+                        <input type="text" name="sniffer[]" value="{{.}}" class="block w-full shadow-sm sm:text-sm border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                        <button type="button" class="bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-2 rounded" onclick="removeArrayField(this)">-</button>
+                    </div>
+                    {{end}}
+                {{else}}
+                    <div class="flex items-center space-x-2">
+                        <input type="text" name="sniffer[]" placeholder="e.g., tls, http" class="block w-full shadow-sm sm:text-sm border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                        <button type="button" class="bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-2 rounded" onclick="removeArrayField(this)">-</button>
+                    </div>
+                {{end}}
+            </div>
+            <button type="button" class="mt-2 bg-blue-500 hover:bg-blue-600 text-white font-bold py-1 px-2 rounded text-sm" onclick="addArrayField('array-sniffer', 'sniffer', 'e.g., tls, http')">+ Add</button>
+        </div>
+        <div>
+            <label for="timeout" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Timeout (ms)</label>
+            <input type="number" name="timeout" id="timeout" value="{{.Action.Timeout}}" placeholder="300" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+        </div>
+    </div>
+</template>
+
+<template id="resolve-fields-template">
+    <div class="space-y-4">
+        <h3 class="text-lg font-medium text-gray-900 dark:text-white">Resolve Action</h3>
+        <div>
+            <label for="server" class="block text-sm font-medium text-gray-700 dark:text-gray-300">DNS Server</label>
+            <input type="text" name="server" id="server" value="{{.Action.Server}}" class="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+        </div>
+        <div>
+            <label for="strategy" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Resolution Strategy</label>
+            <select name="strategy" id="strategy" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+                 <option value="">-- Default --</option>
+                 <option value="prefer_ipv4" {{if eq .Action.Strategy "prefer_ipv4"}}selected{{end}}>Prefer IPv4</option>
+                 <option value="prefer_ipv6" {{if eq .Action.Strategy "prefer_ipv6"}}selected{{end}}>Prefer IPv6</option>
+                 <option value="ipv4_only" {{if eq .Action.Strategy "ipv4_only"}}selected{{end}}>IPv4 Only</option>
+                 <option value="ipv6_only" {{if eq .Action.Strategy "ipv6_only"}}selected{{end}}>IPv6 Only</option>
+            </select>
+        </div>
+        <div class="flex items-center">
+            <input type="checkbox" name="disable_cache" id="disable_cache" class="rounded h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500" {{if .Action.DisableCache}}checked{{end}}>
+            <label for="disable_cache" class="ml-2 block text-sm text-gray-900 dark:text-gray-300">Disable Cache</label>
+        </div>
+    </div>
+</template>
+
+<template id="reject-fields-template">
+    <div class="space-y-4">
+        <h3 class="text-lg font-medium text-gray-900 dark:text-white">Reject Action</h3>
+        <div>
+            <label for="method" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Reject Method</label>
+            <select name="method" id="method" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+                <option value="">-- Default --</option>
+                <option value="default" {{if eq .Action.Method "default"}}selected{{end}}>Default</option>
+                <option value="drop" {{if eq .Action.Method "drop"}}selected{{end}}>Drop</option>
+            </select>
+        </div>
+    </div>
+</template>
+
+<template id="hijack-dns-fields-template">
+     <div class="space-y-4">
+        <h3 class="text-lg font-medium text-gray-900 dark:text-white">Hijack DNS Action</h3>
+        <p class="text-sm text-gray-500 dark:text-gray-400">This action hijacks DNS requests. No additional configuration needed.</p>
+    </div>
+</template>
+
 <script>
 function updateActionTypeFields() {
     const actionType = document.getElementById('action_type').value;
+    const container = document.getElementById('action-fields-container');
+    container.innerHTML = '';
 
-    // Hide all action field sections
-    document.querySelectorAll('.action-fields').forEach(section => {
-        section.style.display = 'none';
-    });
-
-    // Show relevant section based on action type
     if (actionType) {
-        const fieldSection = document.getElementById(actionType + '-fields');
-        if (fieldSection) {
-            fieldSection.style.display = 'block';
+        const template = document.getElementById(actionType + '-fields-template');
+        if (template) {
+            container.appendChild(template.content.cloneNode(true));
         }
     }
 }
 
-function addArrayField(containerId, fieldName, placeholder, hasOptions, options) {
+function addArrayField(containerId, fieldName, placeholder) {
     const container = document.getElementById(containerId);
     const newItem = document.createElement('div');
-    newItem.className = 'array-field-item';
-
+    newItem.className = 'flex items-center space-x-2';
     newItem.innerHTML = `
-        <input type="text" name="${fieldName}[]" placeholder="${placeholder}">
-        <button type="button" class="button button-small button-danger" onclick="removeArrayField(this)">-</button>
+        <input type="text" name="${fieldName}[]" placeholder="${placeholder}" class="block w-full shadow-sm sm:text-sm border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+        <button type="button" class="bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-2 rounded" onclick="removeArrayField(this)">-</button>
     `;
-
     container.appendChild(newItem);
 }
 
 function removeArrayField(button) {
-    const container = button.parentElement.parentElement;
-    if (container.children.length > 1) {
-        button.parentElement.remove();
-    }
+    const item = button.parentElement;
+    item.remove();
 }
 
 function closeActionModalOnSuccess(event) {
-    setTimeout(() => {
-        const modal = document.getElementById('rule-action-form-modal');
-        if (modal) {
-            modal.remove();
+    document.body.addEventListener('htmx:afterRequest', function (evt) {
+        if (evt.detail.successful) {
+            const modal = document.getElementById('rule-action-form-modal');
+            if (modal) {
+                modal.remove();
+            }
         }
-    }, 500);
+    }, { once: true });
 }
 
-// Initialize on page load
-document.addEventListener('DOMContentLoaded', function() {
-    updateActionTypeFields();
+document.addEventListener('DOMContentLoaded', updateActionTypeFields);
+document.body.addEventListener('htmx:afterSwap', function(event) {
+    if (event.target.id === 'rule-action-form-modal') {
+        updateActionTypeFields();
+    }
 });
-
-// Also call after modal is added to DOM
-setTimeout(updateActionTypeFields, 100);
 </script>
 {{end}}

@@ -1,63 +1,55 @@
 {{define "config-backups.html"}}
-<div class="backups-container">
-    <div class="backup-actions" style="margin-bottom: 1rem;">
-        <button class="button button-primary" onclick="showBackupForm()">+ Create Backup</button>
-        <a href="/api/config/export" class="button" download>Export Current Config</a>
+<div>
+    <div class="flex space-x-2 mb-4">
+        <button class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded" onclick="showBackupForm()">+ Create Backup</button>
+        <a href="/api/config/export" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded" download>Export Current Config</a>
     </div>
 
-    <div id="backup-form" style="display: none; margin-bottom: 1rem; padding: 1rem; border: 1px solid #ddd; border-radius: 4px; background: #f9f9f9;">
-        <h3 style="margin-top: 0;">Create Manual Backup</h3>
-        <form hx-post="/api/config/create-backup" hx-target="#config-backups">
-            <div style="margin-bottom: 0.5rem;">
-                <label for="backup-name" style="display: block; margin-bottom: 0.25rem;">Name:</label>
-                <input type="text" id="backup-name" name="name" placeholder="e.g., Before migration" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+    <div id="backup-form" class="hidden mb-4 p-4 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700">
+        <h3 class="text-lg font-medium mb-2">Create Manual Backup</h3>
+        <form hx-post="/api/config/create-backup" hx-target="#config-backups" class="space-y-4">
+            <div>
+                <label for="backup-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
+                <input type="text" id="backup-name" name="name" placeholder="e.g., Before migration" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-600 dark:border-gray-500">
             </div>
-            <div style="margin-bottom: 0.5rem;">
-                <label for="backup-desc" style="display: block; margin-bottom: 0.25rem;">Description (optional):</label>
-                <input type="text" id="backup-desc" name="description" placeholder="e.g., Backup before major changes" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+            <div>
+                <label for="backup-desc" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Description (optional)</label>
+                <input type="text" id="backup-desc" name="description" placeholder="e.g., Backup before major changes" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-600 dark:border-gray-500">
             </div>
-            <div style="display: flex; gap: 0.5rem;">
-                <button type="submit" class="button button-primary">Create</button>
-                <button type="button" class="button" onclick="hideBackupForm()">Cancel</button>
+            <div class="flex space-x-2">
+                <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">Create</button>
+                <button type="button" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded" onclick="hideBackupForm()">Cancel</button>
             </div>
         </form>
     </div>
 
     {{if .Backups}}
-    <div class="backups-list">
+    <div class="space-y-2">
         {{range .Backups}}
-        <div class="backup-item" style="padding: 1rem; margin-bottom: 0.5rem; border: 1px solid #ddd; border-radius: 4px; background: white;">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                <div style="flex: 1;">
-                    <div style="font-weight: bold; margin-bottom: 0.25rem;">{{.Metadata.Name}}</div>
-                    {{if .Metadata.Description}}
-                    <div style="font-size: 0.9em; color: #666; margin-bottom: 0.25rem;">{{.Metadata.Description}}</div>
-                    {{end}}
-                    <div style="font-size: 0.85em; color: #999;">
-                        {{.Metadata.Timestamp.Format "2006-01-02 15:04:05"}}
-                        {{if .Metadata.Version}} · Version {{.Metadata.Version}}{{end}}
-                    </div>
-                    <div style="font-size: 0.8em; color: #aaa; margin-top: 0.25rem;">{{.Filename}}</div>
-                </div>
-                <form hx-post="/api/config/restore" hx-target="#config-backups" hx-confirm="Are you sure you want to restore this backup? Current config will be backed up first.">
-                    <input type="hidden" name="backup" value="{{.Filename}}">
-                    <button type="submit" class="button button-small">Restore</button>
-                </form>
+        <div class="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 flex justify-between items-center">
+            <div>
+                <p class="font-bold">{{.Metadata.Name}}</p>
+                <p class="text-sm text-gray-600 dark:text-gray-400">{{.Metadata.Description}}</p>
+                <p class="text-xs text-gray-500 dark:text-gray-500 font-mono">{{.Metadata.Timestamp.Format "2006-01-02 15:04:05"}} | {{.Filename}}</p>
             </div>
+            <form hx-post="/api/config/restore" hx-target="#config-backups" hx-confirm="Are you sure you want to restore this backup? Current config will be backed up first.">
+                <input type="hidden" name="backup" value="{{.Filename}}">
+                <button type="submit" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded">Restore</button>
+            </form>
         </div>
         {{end}}
     </div>
     {{else}}
-    <p class="empty-state">No backups available. Create your first backup above!</p>
+    <p class="text-center text-gray-500 dark:text-gray-400 py-8">No backups available. Create your first backup!</p>
     {{end}}
 </div>
 
 <script>
 function showBackupForm() {
-    document.getElementById('backup-form').style.display = 'block';
+    document.getElementById('backup-form').classList.remove('hidden');
 }
 function hideBackupForm() {
-    document.getElementById('backup-form').style.display = 'none';
+    document.getElementById('backup-form').classList.add('hidden');
     document.getElementById('backup-name').value = '';
     document.getElementById('backup-desc').value = '';
 }

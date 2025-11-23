@@ -1,45 +1,54 @@
 {{define "index.html"}}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 {{template "head" .}}
-<body>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
     {{template "navbar"}}
 
-    <main class="container">
-        <div class="hero">
-            <h1>Welcome to Sing-Box Config Manager</h1>
-            <p class="subtitle">Simple web-based configuration management for sing-box</p>
+    <main class="container mx-auto px-4 py-8">
+        <div class="text-center py-16">
+            <h1 class="text-5xl font-extrabold tracking-tight text-gray-900 dark:text-white">
+                Welcome to Sing-Box Config Manager
+            </h1>
+            <p class="mt-4 text-xl text-gray-600 dark:text-gray-400">
+                Simple web-based configuration management for sing-box
+            </p>
         </div>
 
-        <div class="cards">
-            <div class="card">
-                <h2>Route Rules</h2>
-                <p>Manage your sing-box routing rules with an intuitive interface</p>
-                <a href="/rules" class="button">Manage Rules</a>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+                <h2 class="text-2xl font-bold mb-2">Route Rules</h2>
+                <p class="text-gray-600 dark:text-gray-400 mb-4">Manage your sing-box routing rules with an intuitive interface.</p>
+                <a href="/rules" class="inline-block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">
+                    Manage Rules
+                </a>
             </div>
 
-            <div class="card">
-                <h2>Rule Actions</h2>
-                <p>Configure rule actions for sing-box 1.11.0+ (route, sniff, resolve, reject, etc.)</p>
-                <a href="/rule-actions" class="button">Manage Actions</a>
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+                <h2 class="text-2xl font-bold mb-2">Rule Actions</h2>
+                <p class="text-gray-600 dark:text-gray-400 mb-4">Configure rule actions for sing-box 1.11.0+ (route, sniff, resolve, reject, etc.).</p>
+                <a href="/rule-actions" class="inline-block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">
+                    Manage Actions
+                </a>
             </div>
 
-            <div class="card">
-                <h2>Auto-Generated Types</h2>
-                <p>Types automatically synchronized with sing-box upstream</p>
-                <div class="metadata">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+                <h2 class="text-2xl font-bold mb-2">Auto-Generated Types</h2>
+                <div class="text-gray-600 dark:text-gray-400">
                     {{if .Data.Metadata}}
-                    <p><strong>Sing-Box Commit:</strong> {{.Data.Metadata.SingBoxCommit}}</p>
-                    <p><strong>Branch:</strong> {{.Data.Metadata.SingBoxBranch}}</p>
-                    <p><strong>Types Generated:</strong> {{.Data.Metadata.TypesGenerated}}</p>
-                    <p><strong>Generated:</strong> {{.Data.Metadata.Timestamp.Format "2006-01-02 15:04:05"}}</p>
+                    <p><strong>Sing-Box Commit:</strong> <span class="font-mono">{{.Data.Metadata.SingBoxCommit}}</span></p>
+                    <p><strong>Branch:</strong> <span class="font-mono">{{.Data.Metadata.SingBoxBranch}}</span></p>
+                    <p><strong>Types Generated:</strong> <span class="font-mono">{{.Data.Metadata.TypesGenerated}}</span></p>
+                    <p><strong>Generated:</strong> <span class="font-mono">{{.Data.Metadata.Timestamp.Format "2006-01-02 15:04:05"}}</span></p>
+                    {{else}}
+                    <p>Metadata not available.</p>
                     {{end}}
                 </div>
             </div>
 
-            <div class="card">
-                <h2>Coming Soon</h2>
-                <ul>
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+                <h2 class="text-2xl font-bold mb-2">Coming Soon</h2>
+                <ul class="list-disc list-inside text-gray-600 dark:text-gray-400">
                     <li>DNS Configuration</li>
                     <li>Inbound/Outbound Management</li>
                     <li>Configuration Templates</li>
@@ -47,16 +56,16 @@
                     <li>Validation & Testing</li>
                 </ul>
             </div>
-        </div>
 
-        <div class="info-section">
-            <h2>Features</h2>
-            <ul>
-                <li><strong>Type Safety:</strong> Automatically generated types from sing-box source ensure correctness</li>
-                <li><strong>User Friendly:</strong> No need to manually edit JSON files</li>
-                <li><strong>HTMX Powered:</strong> Dynamic interface without heavy JavaScript</li>
-                <li><strong>Always Up-to-Date:</strong> Generator keeps types synchronized with sing-box</li>
-            </ul>
+            <div class="md:col-span-2 lg:col-span-3 bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+                <h2 class="text-2xl font-bold mb-2">Features</h2>
+                <ul class="list-disc list-inside text-gray-600 dark:text-gray-400">
+                    <li><strong>Type Safety:</strong> Automatically generated types from sing-box source ensure correctness.</li>
+                    <li><strong>User Friendly:</strong> No need to manually edit JSON files.</li>
+                    <li><strong>HTMX Powered:</strong> Dynamic interface without heavy JavaScript.</li>
+                    <li><strong>Always Up-to-Date:</strong> Generator keeps types synchronized with sing-box.</li>
+                </ul>
+            </div>
         </div>
     </main>
 

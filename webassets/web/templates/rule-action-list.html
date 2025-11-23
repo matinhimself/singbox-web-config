@@ -1,23 +1,30 @@
 {{define "rule-action-list.html"}}
 {{if .RuleActions}}
-    <div class="rule-actions-grid">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {{range $index, $action := .RuleActions}}
-        <div class="rule-action-card">
-            <div class="rule-action-header">
-                <div class="rule-action-title">
-                    <h3>Action {{add $index 1}}</h3>
-                    <span class="badge badge-{{if eq .Type "route"}}primary{{else if eq .Type "reject"}}danger{{else if eq .Type "sniff"}}info{{else if eq .Type "resolve"}}success{{else}}secondary{{end}}">
+        <div class="bg-gray-50 dark:bg-gray-700 rounded-lg shadow-sm overflow-hidden">
+            <div class="p-4 border-b border-gray-200 dark:border-gray-600 flex justify-between items-center">
+                <div>
+                    <h3 class="font-bold text-lg text-gray-800 dark:text-gray-200">Action {{add $index 1}}</h3>
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                        {{if eq .Type "route"}} bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 {{end}}
+                        {{if eq .Type "reject"}} bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300 {{end}}
+                        {{if eq .Type "sniff"}} bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300 {{end}}
+                        {{if eq .Type "resolve"}} bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 {{end}}
+                        {{if eq .Type "route-options"}} bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300 {{end}}
+                        {{if eq .Type "hijack-dns"}} bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-300 {{end}}
+                    ">
                         {{.Type}}
                     </span>
                 </div>
-                <div class="rule-action-actions">
-                    <button class="button button-small"
+                <div class="flex items-center space-x-2">
+                    <button class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-1 px-3 rounded text-sm"
                             hx-get="/api/rule-actions/form?index={{$index}}"
                             hx-target="body"
                             hx-swap="beforeend">
                         Edit
                     </button>
-                    <button class="button button-small button-danger"
+                    <button class="bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-3 rounded text-sm"
                             hx-delete="/api/rule-actions/delete?index={{$index}}"
                             hx-target="#rule-actions-list"
                             hx-swap="innerHTML"
@@ -27,62 +34,28 @@
                 </div>
             </div>
 
-            <div class="rule-action-content">
+            <div class="p-4 text-sm text-gray-700 dark:text-gray-300 space-y-2">
                 {{if eq .Type "route"}}
-                    <div class="rule-action-detail">
-                        <strong>Outbound:</strong> <code>{{.Outbound}}</code>
-                    </div>
+                    <p><strong>Outbound:</strong> <code class="bg-gray-200 dark:bg-gray-600 p-1 rounded">{{.Outbound}}</code></p>
                 {{else if eq .Type "sniff"}}
-                    {{if .Sniffer}}
-                    <div class="rule-action-detail">
-                        <strong>Sniffers:</strong> <code>{{range $i, $s := .Sniffer}}{{if $i}}, {{end}}{{$s}}{{end}}</code>
-                    </div>
-                    {{end}}
-                    {{if .Timeout}}
-                    <div class="rule-action-detail">
-                        <strong>Timeout:</strong> <code>{{.Timeout}}ms</code>
-                    </div>
-                    {{end}}
+                    {{if .Sniffer}}<p><strong>Sniffers:</strong> <code class="bg-gray-200 dark:bg-gray-600 p-1 rounded">{{range $i, $s := .Sniffer}}{{if $i}}, {{end}}{{$s}}{{end}}</code></p>{{end}}
+                    {{if .Timeout}}<p><strong>Timeout:</strong> <code class="bg-gray-200 dark:bg-gray-600 p-1 rounded">{{.Timeout}}ms</code></p>{{end}}
                 {{else if eq .Type "resolve"}}
-                    {{if .Server}}
-                    <div class="rule-action-detail">
-                        <strong>DNS Server:</strong> <code>{{.Server}}</code>
-                    </div>
-                    {{end}}
-                    {{if .Strategy}}
-                    <div class="rule-action-detail">
-                        <strong>Strategy:</strong> <code>{{.Strategy}}</code>
-                    </div>
-                    {{end}}
+                    {{if .Server}}<p><strong>DNS Server:</strong> <code class="bg-gray-200 dark:bg-gray-600 p-1 rounded">{{.Server}}</code></p>{{end}}
+                    {{if .Strategy}}<p><strong>Strategy:</strong> <code class="bg-gray-200 dark:bg-gray-600 p-1 rounded">{{.Strategy}}</code></p>{{end}}
                 {{else if eq .Type "reject"}}
-                    {{if .Method}}
-                    <div class="rule-action-detail">
-                        <strong>Method:</strong> <code>{{.Method}}</code>
-                    </div>
-                    {{end}}
+                    {{if .Method}}<p><strong>Method:</strong> <code class="bg-gray-200 dark:bg-gray-600 p-1 rounded">{{.Method}}</code></p>{{end}}
                 {{else if eq .Type "route-options"}}
-                    {{if .Outbound}}
-                    <div class="rule-action-detail">
-                        <strong>Outbound:</strong> <code>{{.Outbound}}</code>
-                    </div>
-                    {{end}}
-                    {{if .OverrideAddress}}
-                    <div class="rule-action-detail">
-                        <strong>Override Address:</strong> <code>{{.OverrideAddress}}</code>
-                    </div>
-                    {{end}}
-                    {{if .OverridePort}}
-                    <div class="rule-action-detail">
-                        <strong>Override Port:</strong> <code>{{.OverridePort}}</code>
-                    </div>
-                    {{end}}
+                    {{if .Outbound}}<p><strong>Outbound:</strong> <code class="bg-gray-200 dark:bg-gray-600 p-1 rounded">{{.Outbound}}</code></p>{{end}}
+                    {{if .OverrideAddress}}<p><strong>Override Address:</strong> <code class="bg-gray-200 dark:bg-gray-600 p-1 rounded">{{.OverrideAddress}}</code></p>{{end}}
+                    {{if .OverridePort}}<p><strong>Override Port:</strong> <code class="bg-gray-200 dark:bg-gray-600 p-1 rounded">{{.OverridePort}}</code></p>{{end}}
                 {{end}}
             </div>
 
-            <div class="rule-action-json">
+            <div class="p-4 bg-gray-100 dark:bg-gray-800">
                 <details>
-                    <summary>View JSON</summary>
-                    <pre>{{marshal .Config}}</pre>
+                    <summary class="cursor-pointer text-sm font-medium text-gray-600 dark:text-gray-400">View JSON</summary>
+                    <pre class="mt-2 p-2 bg-white dark:bg-gray-900 rounded-md text-xs">{{marshal .Config}}</pre>
                 </details>
             </div>
         </div>
@@ -92,9 +65,9 @@
         document.getElementById('rule-action-count').textContent = '{{len .RuleActions}} rule action(s)';
     </script>
 {{else}}
-    <div class="empty-state">
-        <p>No rule actions configured yet.</p>
-        <p>Click "Add Rule Action" to create your first rule action configuration.</p>
+    <div class="text-center py-12">
+        <p class="text-gray-500 dark:text-gray-400">No rule actions configured yet.</p>
+        <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Click "Add Rule Action" to create your first rule action configuration.</p>
     </div>
     <script>
         document.getElementById('rule-action-count').textContent = '0 rule actions';

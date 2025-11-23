@@ -1,142 +1,126 @@
 {{define "rule-form.html"}}
-<div class="modal-overlay" id="rule-form-modal">
-    <div class="modal">
-        <div class="modal-header">
-            <h2>{{.Form.Title}}</h2>
-            <button class="close-button" onclick="document.getElementById('rule-form-modal').remove()">×</button>
+<div class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50" id="rule-form-modal">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+            <h2 class="text-2xl font-bold">{{.Form.Title}}</h2>
+            <button class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200" onclick="document.getElementById('rule-form-modal').remove()">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
         </div>
 
         <form hx-post="{{if .EditMode}}/api/rules/update{{else}}/api/rules/create{{end}}"
               hx-target="#rules-list"
               hx-swap="innerHTML"
-              class="rule-form"
+              class="p-6 space-y-4"
               onsubmit="closeModalOnSuccess(event)">
             {{if .EditMode}}
             <input type="hidden" name="index" value="{{.RuleIndex}}">
             {{end}}
 
-            <div class="form-group">
-                <label for="rule_type">Rule Type</label>
-                <select name="rule_type" id="rule_type"
-                        hx-get="/api/rules/form{{if .EditMode}}?index={{.RuleIndex}}{{end}}"
-                        hx-target="#rule-form-modal"
-                        hx-swap="outerHTML"
-                        hx-include="[name='rule_type']"
-                        {{if .EditMode}}disabled{{end}}>
-                    {{range .RuleTypes}}
-                    <option value="{{.}}" {{if eq . $.Form.Name}}selected{{end}}>{{.}}</option>
-                    {{end}}
-                </select>
-            </div>
-
-            {{range .Form.Fields}}
-            <div class="form-group" data-field="{{.JSONTag}}">
-                <label for="{{.JSONTag}}">
-                    {{.Label}}
-                    {{if .Required}}<span class="required">*</span>{{end}}
-                </label>
-
-                {{if eq .Type "checkbox"}}
-                    <input type="checkbox"
-                           name="{{.JSONTag}}"
-                           id="{{.JSONTag}}"
-                           {{if .Value}}checked{{end}}>
-                {{else if eq .Type "select"}}
-                    <select name="{{.JSONTag}}" id="{{.JSONTag}}" {{if eq .JSONTag "action"}}onchange="updateActionFields()"{{end}}>
-                        <option value="">-- Select --</option>
-                        {{range .Options}}
-                        <option value="{{.}}" {{if eq . $.Value}}selected{{end}}>{{.}}</option>
+            <div class="grid grid-cols-1 gap-4">
+                <div>
+                    <label for="rule_type" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Rule Type</label>
+                    <select name="rule_type" id="rule_type"
+                            class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                            hx-get="/api/rules/form{{if .EditMode}}?index={{.RuleIndex}}{{end}}"
+                            hx-target="#rule-form-modal"
+                            hx-swap="outerHTML"
+                            hx-include="[name='rule_type']"
+                            {{if .EditMode}}disabled{{end}}>
+                        {{range .RuleTypes}}
+                        <option value="{{.}}" {{if eq . $.Form.Name}}selected{{end}}>{{.}}</option>
                         {{end}}
                     </select>
-                {{else if eq .Type "textarea"}}
-                    <textarea name="{{.JSONTag}}"
-                              id="{{.JSONTag}}"
-                              rows="3"
-                              placeholder="{{.Placeholder}}">{{.Value}}</textarea>
-                {{else if eq .Type "array"}}
-                    <div class="array-field-container" id="array-{{.JSONTag}}">
-                        {{$field := .}}
-                        {{if .Values}}
-                            {{range .Values}}
-                            <div class="array-field-item">
-                                {{if $field.Options}}
-                                <select name="{{$field.JSONTag}}[]">
-                                    <option value="">-- Select --</option>
-                                    {{$currentValue := .}}
-                                    {{range $field.Options}}
-                                    <option value="{{.}}" {{if eq . $currentValue}}selected{{end}}>{{.}}</option>
-                                    {{end}}
-                                </select>
-                                {{else}}
-                                <input type="text"
-                                       name="{{$field.JSONTag}}[]"
-                                       value="{{.}}"
-                                       placeholder="{{if $field.Placeholder}}{{$field.Placeholder}}{{else}}Enter value{{end}}">
-                                {{end}}
-                                <button type="button" class="button button-small button-danger" onclick="removeArrayField(this)">-</button>
-                            </div>
-                            {{end}}
-                        {{else}}
-                            <div class="array-field-item">
-                                {{if .Options}}
-                                <select name="{{.JSONTag}}[]">
-                                    <option value="">-- Select --</option>
-                                    {{range .Options}}
-                                    <option value="{{.}}">{{.}}</option>
-                                    {{end}}
-                                </select>
-                                {{else}}
-                                <input type="text"
-                                       name="{{.JSONTag}}[]"
-                                       placeholder="{{if .Placeholder}}{{.Placeholder}}{{else}}Enter value{{end}}">
-                                {{end}}
-                                <button type="button" class="button button-small button-danger" onclick="removeArrayField(this)">-</button>
-                            </div>
-                        {{end}}
-                    </div>
-                    <button type="button" class="button button-small" onclick="addArrayField('array-{{.JSONTag}}', '{{.JSONTag}}', '{{if .Placeholder}}{{.Placeholder}}{{else}}Enter value{{end}}', {{if .Options}}true{{else}}false{{end}}, {{if .Options}}[{{range $i, $opt := .Options}}{{if $i}},{{end}}'{{$opt}}'{{end}}]{{else}}[]{{end}})">+ Add</button>
-                {{else if eq .Type "number"}}
-                    <input type="number"
-                           name="{{.JSONTag}}"
-                           id="{{.JSONTag}}"
-                           value="{{.Value}}"
-                           placeholder="{{.Placeholder}}">
-                {{else}}
-                    <input type="text"
-                           name="{{.JSONTag}}"
-                           id="{{.JSONTag}}"
-                           value="{{.Value}}"
-                           placeholder="{{.Placeholder}}">
-                {{end}}
+                </div>
 
-                {{if .Description}}
-                <small class="help-text">{{.Description}}</small>
+                {{range .Form.Fields}}
+                <div class="form-group" data-field="{{.JSONTag}}">
+                    <label for="{{.JSONTag}}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {{.Label}}
+                        {{if .Required}}<span class="text-red-500">*</span>{{end}}
+                    </label>
+
+                    <div class="mt-1">
+                    {{if eq .Type "checkbox"}}
+                        <input type="checkbox" name="{{.JSONTag}}" id="{{.JSONTag}}" class="rounded h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500" {{if .Value}}checked{{end}}>
+                    {{else if eq .Type "select"}}
+                        <select name="{{.JSONTag}}" id="{{.JSONTag}}" class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md" {{if eq .JSONTag "action"}}onchange="updateActionFields()"{{end}}>
+                            <option value="">-- Select --</option>
+                            {{range .Options}}
+                            <option value="{{.}}" {{if eq . $.Value}}selected{{end}}>{{.}}</option>
+                            {{end}}
+                        </select>
+                    {{else if eq .Type "textarea"}}
+                        <textarea name="{{.JSONTag}}" id="{{.JSONTag}}" rows="3" class="block w-full shadow-sm sm:text-sm border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white" placeholder="{{.Placeholder}}">{{.Value}}</textarea>
+                    {{else if eq .Type "array"}}
+                        <div class="space-y-2" id="array-{{.JSONTag}}">
+                            {{$field := .}}
+                            {{if .Values}}
+                                {{range .Values}}
+                                <div class="flex items-center space-x-2">
+                                    {{if $field.Options}}
+                                    <select name="{{$field.JSONTag}}[]" class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+                                        <option value="">-- Select --</option>
+                                        {{$currentValue := .}}
+                                        {{range $field.Options}}
+                                        <option value="{{.}}" {{if eq . $currentValue}}selected{{end}}>{{.}}</option>
+                                        {{end}}
+                                    </select>
+                                    {{else}}
+                                    <input type="text" name="{{$field.JSONTag}}[]" value="{{.}}" placeholder="{{if $field.Placeholder}}{{$field.Placeholder}}{{else}}Enter value{{end}}" class="block w-full shadow-sm sm:text-sm border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                    {{end}}
+                                    <button type="button" class="bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-2 rounded" onclick="removeArrayField(this)">-</button>
+                                </div>
+                                {{end}}
+                            {{else}}
+                                <div class="flex items-center space-x-2">
+                                    {{if .Options}}
+                                    <select name="{{.JSONTag}}[]" class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+                                        <option value="">-- Select --</option>
+                                        {{range .Options}}
+                                        <option value="{{.}}">{{.}}</option>
+                                        {{end}}
+                                    </select>
+                                    {{else}}
+                                    <input type="text" name="{{.JSONTag}}[]" placeholder="{{if .Placeholder}}{{.Placeholder}}{{else}}Enter value{{end}}" class="block w-full shadow-sm sm:text-sm border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                    {{end}}
+                                    <button type="button" class="bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-2 rounded" onclick="removeArrayField(this)">-</button>
+                                </div>
+                            {{end}}
+                        </div>
+                        <button type="button" class="mt-2 bg-blue-500 hover:bg-blue-600 text-white font-bold py-1 px-2 rounded text-sm" onclick="addArrayField('array-{{.JSONTag}}', '{{.JSONTag}}', '{{if .Placeholder}}{{.Placeholder}}{{else}}Enter value{{end}}', {{if .Options}}true{{else}}false{{end}}, {{if .Options}}[{{range $i, $opt := .Options}}{{if $i}},{{end}}'{{$opt}}'{{end}}]{{else}}[]{{end}})">+ Add</button>
+                    {{else if eq .Type "number"}}
+                        <input type="number" name="{{.JSONTag}}" id="{{.JSONTag}}" value="{{.Value}}" placeholder="{{.Placeholder}}" class="block w-full shadow-sm sm:text-sm border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    {{else}}
+                        <input type="text" name="{{.JSONTag}}" id="{{.JSONTag}}" value="{{.Value}}" placeholder="{{.Placeholder}}" class="block w-full shadow-sm sm:text-sm border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    {{end}}
+                    </div>
+
+                    {{if .Description}}
+                    <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">{{.Description}}</p>
+                    {{end}}
+                </div>
                 {{end}}
             </div>
-            {{end}}
 
-            <div class="form-actions">
-                <button type="submit" class="button button-primary">{{if .EditMode}}Update Rule{{else}}Create Rule{{end}}</button>
-                <button type="button" class="button" onclick="document.getElementById('rule-form-modal').remove()">Cancel</button>
+            <div class="pt-6 border-t border-gray-200 dark:border-gray-700 flex justify-end space-x-2">
+                <button type="button" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded" onclick="document.getElementById('rule-form-modal').remove()">Cancel</button>
+                <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">{{if .EditMode}}Update Rule{{else}}Create Rule{{end}}</button>
             </div>
         </form>
     </div>
 </div>
 
 <script>
-// Action field mappings - defines which fields are relevant for each action type
 const actionFieldMap = {
     'route': ['outbound'],
     'sniff': ['sniffer', 'timeout'],
     'resolve': ['server', 'strategy', 'disable_cache', 'rewrite_ttl', 'client_subnet'],
     'reject': ['method', 'no_drop'],
-    'route-options': ['outbound', 'override_address', 'override_port', 'network_strategy', 'fallback_delay',
-                      'udp_disable_domain_unmapping', 'udp_connect', 'udp_timeout',
-                      'tls_fragment', 'tls_fragment_fallback_delay', 'tls_record_fragment'],
+    'route-options': ['outbound', 'override_address', 'override_port', 'network_strategy', 'fallback_delay', 'udp_disable_domain_unmapping', 'udp_connect', 'udp_timeout', 'tls_fragment', 'tls_fragment_fallback_delay', 'tls_record_fragment'],
     'hijack-dns': []
 };
 
-// Fields that are always shown (rule matching fields)
 const alwaysVisibleFields = [
     'action', 'inbound', 'ip_version', 'network', 'auth_user', 'protocol', 'client',
     'domain', 'domain_suffix', 'domain_keyword', 'domain_regex',
@@ -147,7 +131,6 @@ const alwaysVisibleFields = [
     'network_is_constrained', 'wifi_ssid', 'wifi_bssid', 'interface_address',
     'network_interface_address', 'default_interface_address', 'preferred_by',
     'rule_set', 'rule_set_ip_cidr_match_source', 'invert',
-    // DNS rule fields
     'query_type', 'ip_accept_any', 'rule_set_ip_cidr_accept_empty'
 ];
 
@@ -160,20 +143,14 @@ function updateActionFields() {
 
     allFields.forEach(field => {
         const fieldName = field.getAttribute('data-field');
-
-        // Always show matching fields and the action field itself
         if (alwaysVisibleFields.includes(fieldName)) {
             field.style.display = 'block';
             return;
         }
-
-        // If no action selected, hide action-specific fields
         if (!selectedAction) {
             field.style.display = 'none';
             return;
         }
-
-        // Check if this field is relevant for the selected action
         const relevantFields = actionFieldMap[selectedAction] || [];
         if (relevantFields.includes(fieldName)) {
             field.style.display = 'block';
@@ -183,40 +160,25 @@ function updateActionFields() {
     });
 }
 
-// Initialize on page load
-document.addEventListener('DOMContentLoaded', function() {
-    updateActionFields();
-});
-
-// Also call it after HTMX swaps content
-document.body.addEventListener('htmx:afterSwap', function(event) {
-    if (event.detail.target.id === 'rule-form-modal') {
-        updateActionFields();
-    }
-});
-
 function addArrayField(containerId, fieldName, placeholder, hasOptions, options) {
     const container = document.getElementById(containerId);
     const newItem = document.createElement('div');
-    newItem.className = 'array-field-item';
+    newItem.className = 'flex items-center space-x-2';
 
+    let inputHtml;
     if (hasOptions && options && options.length > 0) {
-        let selectHTML = `<select name="${fieldName}[]">`;
+        let selectHTML = `<select name="${fieldName}[]" class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">`;
         selectHTML += '<option value="">-- Select --</option>';
         options.forEach(opt => {
             selectHTML += `<option value="${opt}">${opt}</option>`;
         });
         selectHTML += '</select>';
-        newItem.innerHTML = selectHTML + `
-            <button type="button" class="button button-small button-danger" onclick="removeArrayField(this)">-</button>
-        `;
+        inputHtml = selectHTML;
     } else {
-        newItem.innerHTML = `
-            <input type="text" name="${fieldName}[]" placeholder="${placeholder}">
-            <button type="button" class="button button-small button-danger" onclick="removeArrayField(this)">-</button>
-        `;
+        inputHtml = `<input type="text" name="${fieldName}[]" placeholder="${placeholder}" class="block w-full shadow-sm sm:text-sm border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">`;
     }
-
+    
+    newItem.innerHTML = inputHtml + `<button type="button" class="bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-2 rounded" onclick="removeArrayField(this)">-</button>`;
     container.appendChild(newItem);
 }
 
@@ -228,13 +190,25 @@ function removeArrayField(button) {
 }
 
 function closeModalOnSuccess(event) {
-    // The modal will be removed by HTMX after successful submission
-    setTimeout(() => {
-        const modal = document.getElementById('rule-form-modal');
-        if (modal) {
-            modal.remove();
+    document.body.addEventListener('htmx:afterRequest', function (evt) {
+        if (evt.detail.successful) {
+            const modal = document.getElementById('rule-form-modal');
+            if (modal) {
+                modal.remove();
+            }
         }
-    }, 500);
+    }, { once: true });
 }
+
+
+document.addEventListener('DOMContentLoaded', function() {
+    updateActionFields();
+});
+
+document.body.addEventListener('htmx:afterSwap', function(event) {
+    if (event.detail.target.id === 'rule-form-modal') {
+        updateActionFields();
+    }
+});
 </script>
 {{end}}

@@ -33,6 +33,7 @@ Thumbs.db
 
 # Build output
 dist/
+tmp/
 build/
 
 # Built binaries

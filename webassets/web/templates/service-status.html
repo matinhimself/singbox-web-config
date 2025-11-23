@@ -1,45 +1,44 @@
 {{define "service-status.html"}}
-<div class="status-card">
-    <div class="status-header">
-        <h2>Service Status</h2>
-        <span class="status-badge {{if .Status.Active}}status-active{{else}}status-inactive{{end}}">
-            {{if .Status.Active}}Active{{else}}Inactive{{end}}
-        </span>
-    </div>
-
-    <div class="status-info">
-        <div class="info-row">
-            <span class="label">Running:</span>
-            <span class="value">{{if .Status.Running}}Yes{{else}}No{{end}}</span>
+<div class="flex justify-between items-center">
+    <div>
+        <div class="flex items-center space-x-4">
+            <span class="text-lg font-medium">Status:</span>
+            {{if .Status.Active}}
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
+                Active
+            </span>
+            {{else}}
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300">
+                Inactive
+            </span>
+            {{end}}
         </div>
-        <div class="info-row">
-            <span class="label">Enabled:</span>
-            <span class="value">{{if .Status.Enabled}}Yes{{else}}No{{end}}</span>
+        <div class="text-sm text-gray-500 dark:text-gray-400 mt-2">
+            <span>Running: {{if .Status.Running}}Yes{{else}}No{{end}}</span> |
+            <span>Enabled: {{if .Status.Enabled}}Yes{{else}}No{{end}}</span>
         </div>
     </div>
-
-    <div class="button-group">
+    <div class="flex space-x-2">
         {{if .Status.Active}}
-        <button class="button button-warning"
+        <button class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded"
                 hx-post="/api/service/stop"
                 hx-target="#service-status"
-                hx-swap="outerHTML">
-            Stop Service
+                hx-swap="innerHTML">
+            Stop
         </button>
         {{else}}
-        <button class="button button-success"
+        <button class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded"
                 hx-post="/api/service/start"
                 hx-target="#service-status"
-                hx-swap="outerHTML">
-            Start Service
+                hx-swap="innerHTML">
+            Start
         </button>
         {{end}}
-
-        <button class="button button-primary"
+        <button class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded"
                 hx-post="/api/service/restart"
                 hx-target="#service-status"
-                hx-swap="outerHTML">
-            Restart Service
+                hx-swap="innerHTML">
+            Restart
         </button>
     </div>
 </div>

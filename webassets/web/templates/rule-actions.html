@@ -1,35 +1,41 @@
 {{define "rule-actions.html"}}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 {{template "head" (dict "Title" "Rule Actions")}}
-<body>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
     {{template "navbar"}}
 
-    <div class="container">
-        <div class="page-header">
-            <h2>Rule Actions Management</h2>
-            <p class="help-text">Configure and manage rule actions for sing-box 1.11.0+. Rule actions define what happens when a rule matches traffic.</p>
-        </div>
-
-        <div class="toolbar">
-            <button class="button button-primary"
-                    hx-get="/api/rule-actions/form"
-                    hx-target="body"
-                    hx-swap="beforeend">
-                + Add Rule Action
-            </button>
-            <div class="toolbar-info">
-                <span id="rule-action-count">Loading...</span>
+    <main class="container mx-auto px-4 py-8">
+        <div class="flex justify-between items-center mb-8">
+            <div>
+                <h1 class="text-3xl font-bold">Rule Actions Management</h1>
+                <p class="text-gray-600 dark:text-gray-400">Configure and manage rule actions for sing-box 1.11.0+. Rule actions define what happens when a rule matches traffic.</p>
+            </div>
+            <div class="flex items-center space-x-4">
+                <button class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded"
+                        hx-get="/api/rule-actions/form"
+                        hx-target="body"
+                        hx-swap="beforeend">
+                    + Add Rule Action
+                </button>
+                <div class="text-gray-600 dark:text-gray-400">
+                    <span id="rule-action-count">Loading...</span>
+                </div>
             </div>
         </div>
 
-        <div id="rule-actions-list"
-             hx-get="/api/rule-actions"
-             hx-trigger="load"
-             hx-swap="innerHTML">
-            <div class="loading">Loading rule actions...</div>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+            <div id="rule-actions-list"
+                 hx-get="/api/rule-actions"
+                 hx-trigger="load"
+                 hx-swap="innerHTML">
+                <div class="text-center text-gray-500">
+                    <div class="spinner border-4 border-gray-300 rounded-full w-8 h-8 mb-2"></div>
+                    Loading rule actions...
+                </div>
+            </div>
         </div>
-    </div>
+    </main>
 
     {{template "footer"}}
 </body>
