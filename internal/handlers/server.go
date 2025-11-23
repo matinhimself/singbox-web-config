@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/matinhimself/singbox-web-config/internal/clash"
 	"github.com/matinhimself/singbox-web-config/internal/config"
 	"github.com/matinhimself/singbox-web-config/internal/forms"
 	"github.com/matinhimself/singbox-web-config/internal/service"
@@ -25,6 +26,9 @@ type Server struct {
 	watcher        *watcher.Watcher
 	templatesFS    embed.FS
 	staticFS       embed.FS
+	clashClient    *clash.Client
+	clashURL       string
+	clashSecret    string
 }
 
 // NewServer creates a new HTTP server
@@ -114,6 +118,7 @@ func (s *Server) setupRoutes() {
 	s.mux.HandleFunc("/rules", s.handleRulesPage)
 	s.mux.HandleFunc("/rule-actions", s.handleRuleActionsPage)
 	s.mux.HandleFunc("/connections", s.handleConnectionsPage)
+	s.mux.HandleFunc("/proxies", s.handleProxiesPage)
 	s.mux.HandleFunc("/service", s.handleServicePage)
 
 	// API routes for rules (HTMX endpoints)
@@ -147,6 +152,13 @@ func (s *Server) setupRoutes() {
 	// WebSocket and API routes for connections
 	s.mux.HandleFunc("/ws/connections", s.handleConnectionsWebSocket)
 	s.mux.HandleFunc("/api/connections/create-rule", s.handleConnectionToRule)
+
+	// API routes for proxies
+	s.mux.HandleFunc("/api/proxies/settings", s.handleProxiesSettings)
+	s.mux.HandleFunc("/api/proxies/groups", s.handleProxiesGroups)
+	s.mux.HandleFunc("/api/proxies/switch", s.handleProxySwitch)
+	s.mux.HandleFunc("/api/proxies/delay-test", s.handleProxyDelayTest)
+	s.mux.HandleFunc("/api/proxies/group-delay-test", s.handleProxyGroupDelayTest)
 }
 
 // Start starts the HTTP server
