@@ -6,8 +6,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-
-	"github.com/matinhimself/singbox-web-config/internal/clash"
 )
 
 // ProxyGroupData represents a proxy group with its members
@@ -43,38 +41,13 @@ func (s *Server) handleProxiesPage(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handleProxiesSettings handles getting/setting Clash API settings
+// handleProxiesSettings displays current Clash API settings (read-only)
+// Settings are configured via command-line arguments only
 func (s *Server) handleProxiesSettings(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodPost {
-		if err := r.ParseForm(); err != nil {
-			http.Error(w, "Failed to parse form", http.StatusBadRequest)
-			return
-		}
-
-		clashURL := r.FormValue("clash_url")
-		clashSecret := r.FormValue("clash_secret")
-
-		if clashURL == "" {
-			http.Error(w, "Clash URL is required", http.StatusBadRequest)
-			return
-		}
-
-		// Update settings
-		s.clashURL = clashURL
-		s.clashSecret = clashSecret
-
-		// Create new client with updated settings
-		s.clashClient = clash.NewClient(clashURL, clashSecret)
-
-		w.Header().Set("HX-Trigger", "settingsUpdated")
-		w.WriteHeader(http.StatusOK)
-		return
-	}
-
-	// GET request - return current settings
 	data := map[string]interface{}{
-		"ClashURL":    s.clashURL,
-		"ClashSecret": s.clashSecret,
+		"ClashURL":       s.clashURL,
+		"ClashSecret":    s.clashSecret,
+		"HasClashClient": s.clashClient != nil,
 	}
 
 	if err := s.renderTemplate(w, "proxy-settings.html", data); err != nil {

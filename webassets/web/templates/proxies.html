@@ -15,42 +15,41 @@
         <div class="section">
             <div class="section-header">
                 <h2>Clash API Configuration</h2>
-                <button class="button button-small"
-                        id="toggle-settings"
-                        onclick="document.getElementById('settings-section').classList.toggle('hidden')">
-                    Configure
-                </button>
+                {{if .Data.ClashURL}}
+                <span class="status-badge status-active">✓ Connected</span>
+                {{else}}
+                <span class="status-badge status-inactive">Not Configured</span>
+                {{end}}
             </div>
-            <div id="settings-section" class="{{if .Data.ClashURL}}hidden{{end}}">
-                <div class="card">
-                    <form hx-post="/api/proxies/settings"
-                          hx-target="#proxies-content"
-                          hx-trigger="submit">
-                        <div class="form-group">
-                            <label for="clash_url">Clash API URL</label>
-                            <input type="text"
-                                   id="clash_url"
-                                   name="clash_url"
-                                   value="{{.Data.ClashURL}}"
-                                   placeholder="http://127.0.0.1:9090"
-                                   required>
-                            <small>The base URL for your Clash API</small>
-                        </div>
-                        <div class="form-group">
-                            <label for="clash_secret">Secret (Optional)</label>
-                            <input type="password"
-                                   id="clash_secret"
-                                   name="clash_secret"
-                                   value="{{.Data.ClashSecret}}"
-                                   placeholder="Your Clash API secret">
-                        </div>
-                        <button type="submit" class="button button-primary">Save & Connect</button>
-                    </form>
+            <div class="card">
+                {{if .Data.ClashURL}}
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">Clash API URL:</span>
+                        <span class="info-value">{{.Data.ClashURL}}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Authentication:</span>
+                        <span class="info-value">{{if .Data.ClashSecret}}✓ Enabled{{else}}None{{end}}</span>
+                    </div>
                 </div>
+                <div class="info-note">
+                    <strong>Note:</strong> Clash API settings are configured via command-line arguments.
+                    Restart the server with <code>-clash http://your-clash-url:port</code> to change the configuration.
+                </div>
+                {{else}}
+                <div class="warning-message">
+                    <strong>Clash API Not Configured</strong>
+                    <p>To enable proxy management, start the server with the <code>-clash</code> flag:</p>
+                    <pre><code>singbox-web-config -clash http://127.0.0.1:9090</code></pre>
+                    <p>Optional: Add <code>-clash-secret your-secret</code> if authentication is required.</p>
+                </div>
+                {{end}}
             </div>
         </div>
 
         <!-- Proxies Section -->
+        {{if .Data.ClashURL}}
         <div class="section">
             <div class="section-header">
                 <h2>Proxy Groups</h2>
@@ -58,7 +57,7 @@
                         hx-get="/api/proxies/groups"
                         hx-target="#proxies-content"
                         hx-indicator="#loading-indicator">
-                    Refresh
+                    🔄 Refresh
                 </button>
             </div>
 
@@ -68,11 +67,12 @@
 
             <div id="proxies-content"
                  hx-get="/api/proxies/groups"
-                 hx-trigger="load, proxySwitched from:body, settingsUpdated from:body"
+                 hx-trigger="load, proxySwitched from:body"
                  hx-indicator="#loading-indicator">
                 <!-- Proxy groups will be loaded here -->
             </div>
         </div>
+        {{end}}
     </main>
 
     {{template "footer"}}
@@ -87,6 +87,97 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 1rem;
+        }
+
+        .status-badge {
+            padding: 0.375rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .status-active {
+            background: #ecfdf5;
+            color: var(--success-color);
+            border: 1px solid #a7f3d0;
+        }
+
+        .status-inactive {
+            background: #fef2f2;
+            color: var(--danger-color);
+            border: 1px solid #fecaca;
+        }
+
+        .info-grid {
+            display: grid;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.75rem;
+            background: var(--background);
+            border-radius: 6px;
+        }
+
+        .info-label {
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .info-value {
+            color: var(--text);
+            font-family: monospace;
+        }
+
+        .info-note {
+            padding: 1rem;
+            background: #eff6ff;
+            border-left: 3px solid var(--primary-color);
+            border-radius: 4px;
+            font-size: 0.875rem;
+        }
+
+        .info-note code {
+            background: #dbeafe;
+            padding: 0.125rem 0.375rem;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 0.875rem;
+        }
+
+        .warning-message {
+            padding: 1.5rem;
+            background: #fef3c7;
+            border-left: 3px solid #f59e0b;
+            border-radius: 4px;
+        }
+
+        .warning-message strong {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #92400e;
+        }
+
+        .warning-message p {
+            margin: 0.5rem 0;
+            color: #78350f;
+        }
+
+        .warning-message pre {
+            margin: 0.75rem 0;
+            padding: 0.75rem;
+            background: #fefce8;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+
+        .warning-message code {
+            font-family: monospace;
+            font-size: 0.875rem;
+            color: #92400e;
         }
 
         .proxy-groups {
