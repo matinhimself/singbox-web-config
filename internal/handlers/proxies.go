@@ -115,17 +115,22 @@ func (s *Server) handleProxiesGroups(w http.ResponseWriter, r *http.Request) {
 
 // handleProxySwitch handles switching the active proxy in a group
 func (s *Server) handleProxySwitch(w http.ResponseWriter, r *http.Request) {
+	log.Printf("ProxySwitch: Received request - Method: %s, URL: %s", r.Method, r.URL.String())
+
 	if r.Method != http.MethodPost && r.Method != "PUT" {
+		log.Printf("ProxySwitch: Method not allowed - %s", r.Method)
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
 	if s.clashClient == nil {
+		log.Printf("ProxySwitch: Clash API not configured")
 		http.Error(w, "Clash API not configured", http.StatusBadRequest)
 		return
 	}
 
 	if err := r.ParseForm(); err != nil {
+		log.Printf("ProxySwitch: Failed to parse form - %v", err)
 		http.Error(w, "Failed to parse form", http.StatusBadRequest)
 		return
 	}
@@ -133,16 +138,22 @@ func (s *Server) handleProxySwitch(w http.ResponseWriter, r *http.Request) {
 	groupName := r.FormValue("group")
 	proxyName := r.FormValue("proxy")
 
+	log.Printf("ProxySwitch: Parsed values - Group: '%s', Proxy: '%s'", groupName, proxyName)
+
 	if groupName == "" || proxyName == "" {
+		log.Printf("ProxySwitch: Missing parameters - Group: '%s', Proxy: '%s'", groupName, proxyName)
 		http.Error(w, "Group and proxy names are required", http.StatusBadRequest)
 		return
 	}
 
+	log.Printf("ProxySwitch: Attempting to switch group '%s' to proxy '%s'", groupName, proxyName)
 	if err := s.clashClient.SwitchProxy(groupName, proxyName); err != nil {
-		log.Printf("Error switching proxy: %v", err)
+		log.Printf("ProxySwitch: Error switching proxy: %v", err)
 		http.Error(w, "Failed to switch proxy: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	log.Printf("ProxySwitch: Successfully switched group '%s' to proxy '%s'", groupName, proxyName)
 
 	// Return updated proxy groups
 	w.Header().Set("HX-Trigger", "proxySwitched")
