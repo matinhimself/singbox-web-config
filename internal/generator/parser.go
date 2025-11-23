@@ -12,8 +12,9 @@ import (
 
 // Parser handles parsing Go source files
 type Parser struct {
-	SourceDir string
-	fset      *token.FileSet
+	SourceDir   string
+	FileFilter  func(string) bool // Optional filter function for file names
+	fset        *token.FileSet
 }
 
 // NewParser creates a new parser for the given directory
@@ -47,8 +48,8 @@ func (p *Parser) ParseDirectory() (map[string]*ast.File, error) {
 			continue
 		}
 
-		// Only parse rule-related files
-		if !strings.HasPrefix(entry.Name(), "rule") {
+		// Apply file filter if provided
+		if p.FileFilter != nil && !p.FileFilter(entry.Name()) {
 			continue
 		}
 
@@ -70,7 +71,31 @@ func (p *Parser) ParseDirectory() (map[string]*ast.File, error) {
 	return files, nil
 }
 
+// WithFileFilter sets a custom file filter
+func (p *Parser) WithFileFilter(filter func(string) bool) *Parser {
+	p.FileFilter = filter
+	return p
+}
+
 // GetFileSet returns the file set used for parsing
 func (p *Parser) GetFileSet() *token.FileSet {
 	return p.fset
+}
+
+// FileFilterByPrefix creates a filter that matches files with the given prefix
+func FileFilterByPrefix(prefix string) func(string) bool {
+	return func(name string) bool {
+		return strings.HasPrefix(name, prefix)
+	}
+}
+
+// FileFilterByNames creates a filter that matches specific filenames
+func FileFilterByNames(names ...string) func(string) bool {
+	nameSet := make(map[string]bool)
+	for _, name := range names {
+		nameSet[name] = true
+	}
+	return func(name string) bool {
+		return nameSet[name]
+	}
 }

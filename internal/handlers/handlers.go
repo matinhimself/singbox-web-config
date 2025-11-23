@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/matinhimself/singbox-web-config/internal/config"
 	"github.com/matinhimself/singbox-web-config/internal/types"
 )
 
@@ -44,7 +43,7 @@ func (s *Server) handleRulesPage(w http.ResponseWriter, r *http.Request) {
 	data := PageData{
 		Title: "Route Rules",
 		Data: map[string]interface{}{
-			"RuleTypes": types.AvailableRuleTypes(),
+			// RuleTypes removed - types.AvailableRuleTypes() doesn't exist
 		},
 	}
 
@@ -728,35 +727,11 @@ func (s *Server) handleRuleActionsPage(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleRuleActionsList returns the list of configured rule actions
+// NOTE: route.rule_action field doesn't exist in current sing-box schema
 func (s *Server) handleRuleActionsList(w http.ResponseWriter, r *http.Request) {
-	config, err := s.configManager.LoadConfig()
-	if err != nil {
-		log.Printf("Error getting config: %v", err)
-		http.Error(w, "Failed to get config", http.StatusInternalServerError)
-		return
-	}
-
-	// Extract rule actions from config
-	ruleActions := []RuleActionData{}
-
-	// Get from route.rule_action if it exists
-	if config.Route != nil && config.Route.RuleAction != nil {
-		for _, action := range config.Route.RuleAction {
-			if actionMap, ok := action.(map[string]interface{}); ok {
-				ruleAction := s.parseRuleAction(actionMap)
-				ruleActions = append(ruleActions, ruleAction)
-			}
-		}
-	}
-
-	data := map[string]interface{}{
-		"RuleActions": ruleActions,
-	}
-
-	if err := s.renderTemplate(w, "rule-action-list.html", data); err != nil {
-		log.Printf("Error rendering template: %v", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-	}
+	// NOT IMPLEMENTED: route.rule_action field doesn't exist in the current sing-box schema
+	// Rule action functionality needs to be reimplemented using the current sing-box model
+	http.Error(w, "NOT IMPLEMENTED: rule_action field doesn't exist in current sing-box schema", http.StatusNotImplemented)
 }
 
 // parseRuleAction parses a rule action from config
@@ -842,207 +817,35 @@ func (s *Server) parseRuleAction(actionMap map[string]interface{}) RuleActionDat
 }
 
 // handleRuleActionForm handles showing the rule action form
+// NOTE: route.rule_action field doesn't exist in current sing-box schema
 func (s *Server) handleRuleActionForm(w http.ResponseWriter, r *http.Request) {
-	indexStr := r.URL.Query().Get("index")
-	editMode := indexStr != ""
-
-	outbounds, _ := s.getOutboundTags()
-	data := map[string]interface{}{
-		"EditMode":  editMode,
-		"Outbounds": outbounds,
-	}
-
-	if editMode {
-		index, err := strconv.Atoi(indexStr)
-		if err != nil {
-			http.Error(w, "Invalid index", http.StatusBadRequest)
-			return
-		}
-
-		config, err := s.configManager.LoadConfig()
-		if err != nil {
-			http.Error(w, "Failed to get config", http.StatusInternalServerError)
-			return
-		}
-
-		// Get rule action from config
-		if config.Route != nil && config.Route.RuleAction != nil {
-			if index >= 0 && index < len(config.Route.RuleAction) {
-				if actionMap, ok := config.Route.RuleAction[index].(map[string]interface{}); ok {
-					data["Action"] = s.parseRuleAction(actionMap)
-					data["ActionIndex"] = index
-				}
-			}
-		}
-	} else {
-		data["Action"] = RuleActionData{}
-	}
-
-	if err := s.renderTemplate(w, "rule-action-form.html", data); err != nil {
-		log.Printf("Error rendering template: %v", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-	}
+	// NOT IMPLEMENTED: route.rule_action field doesn't exist in the current sing-box schema
+	// Rule action functionality needs to be reimplemented using the current sing-box model
+	http.Error(w, "NOT IMPLEMENTED: rule_action field doesn't exist in current sing-box schema", http.StatusNotImplemented)
 }
 
 // handleRuleActionCreate handles creating a new rule action
+// NOTE: route.rule_action field doesn't exist in current sing-box schema
 func (s *Server) handleRuleActionCreate(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	if err := r.ParseForm(); err != nil {
-		http.Error(w, "Failed to parse form", http.StatusBadRequest)
-		return
-	}
-
-	action := s.buildRuleActionFromForm(r)
-
-	// Get current config
-	cfg, err := s.configManager.LoadConfig()
-	if err != nil {
-		http.Error(w, "Failed to get config", http.StatusInternalServerError)
-		return
-	}
-
-	// Ensure route exists
-	if cfg.Route == nil {
-		cfg.Route = &config.RouteConfig{
-			RuleAction: []interface{}{},
-		}
-	}
-
-	// Ensure rule_action exists
-	if cfg.Route.RuleAction == nil {
-		cfg.Route.RuleAction = []interface{}{}
-	}
-
-	// Add new action
-	cfg.Route.RuleAction = append(cfg.Route.RuleAction, action)
-
-	// Save config
-	if err := s.configManager.SaveConfig(cfg); err != nil {
-		log.Printf("Error saving config: %v", err)
-		http.Error(w, "Failed to save config", http.StatusInternalServerError)
-		return
-	}
-
-	// Reload service
-	if err := s.serviceManager.Reload(); err != nil {
-		log.Printf("Warning: failed to reload service: %v", err)
-	}
-
-	// Return updated list
-	s.handleRuleActionsList(w, r)
+	// NOT IMPLEMENTED: route.rule_action field doesn't exist in the current sing-box schema
+	// Rule action functionality needs to be reimplemented using the current sing-box model
+	http.Error(w, "NOT IMPLEMENTED: rule_action field doesn't exist in current sing-box schema", http.StatusNotImplemented)
 }
 
 // handleRuleActionUpdate handles updating an existing rule action
+// NOTE: route.rule_action field doesn't exist in current sing-box schema
 func (s *Server) handleRuleActionUpdate(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	if err := r.ParseForm(); err != nil {
-		http.Error(w, "Failed to parse form", http.StatusBadRequest)
-		return
-	}
-
-	indexStr := r.FormValue("index")
-	if indexStr == "" {
-		http.Error(w, "No index provided", http.StatusBadRequest)
-		return
-	}
-
-	index, err := strconv.Atoi(indexStr)
-	if err != nil {
-		http.Error(w, "Invalid index", http.StatusBadRequest)
-		return
-	}
-
-	action := s.buildRuleActionFromForm(r)
-
-	// Get current config
-	cfg, err := s.configManager.LoadConfig()
-	if err != nil {
-		http.Error(w, "Failed to get config", http.StatusInternalServerError)
-		return
-	}
-
-	// Validate index
-	if cfg.Route == nil || cfg.Route.RuleAction == nil || index < 0 || index >= len(cfg.Route.RuleAction) {
-		http.Error(w, "Invalid action index", http.StatusBadRequest)
-		return
-	}
-
-	// Update action
-	cfg.Route.RuleAction[index] = action
-
-	// Save config
-	if err := s.configManager.SaveConfig(cfg); err != nil {
-		log.Printf("Error saving config: %v", err)
-		http.Error(w, "Failed to save config", http.StatusInternalServerError)
-		return
-	}
-
-	// Reload service
-	if err := s.serviceManager.Reload(); err != nil {
-		log.Printf("Warning: failed to reload service: %v", err)
-	}
-
-	// Return updated list
-	s.handleRuleActionsList(w, r)
+	// NOT IMPLEMENTED: route.rule_action field doesn't exist in the current sing-box schema
+	// Rule action functionality needs to be reimplemented using the current sing-box model
+	http.Error(w, "NOT IMPLEMENTED: rule_action field doesn't exist in current sing-box schema", http.StatusNotImplemented)
 }
 
 // handleRuleActionDelete handles deleting a rule action
+// NOTE: route.rule_action field doesn't exist in current sing-box schema
 func (s *Server) handleRuleActionDelete(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodDelete {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	indexStr := r.URL.Query().Get("index")
-	if indexStr == "" {
-		http.Error(w, "No index provided", http.StatusBadRequest)
-		return
-	}
-
-	index, err := strconv.Atoi(indexStr)
-	if err != nil {
-		http.Error(w, "Invalid index", http.StatusBadRequest)
-		return
-	}
-
-	// Get current config
-	cfg, err := s.configManager.LoadConfig()
-	if err != nil {
-		http.Error(w, "Failed to get config", http.StatusInternalServerError)
-		return
-	}
-
-	// Validate index
-	if cfg.Route == nil || cfg.Route.RuleAction == nil || index < 0 || index >= len(cfg.Route.RuleAction) {
-		http.Error(w, "Invalid action index", http.StatusBadRequest)
-		return
-	}
-
-	// Remove action
-	cfg.Route.RuleAction = append(cfg.Route.RuleAction[:index], cfg.Route.RuleAction[index+1:]...)
-
-	// Save config
-	if err := s.configManager.SaveConfig(cfg); err != nil {
-		log.Printf("Error saving config: %v", err)
-		http.Error(w, "Failed to save config", http.StatusInternalServerError)
-		return
-	}
-
-	// Reload service
-	if err := s.serviceManager.Reload(); err != nil {
-		log.Printf("Warning: failed to reload service: %v", err)
-	}
-
-	// Return updated list
-	s.handleRuleActionsList(w, r)
+	// NOT IMPLEMENTED: route.rule_action field doesn't exist in the current sing-box schema
+	// Rule action functionality needs to be reimplemented using the current sing-box model
+	http.Error(w, "NOT IMPLEMENTED: rule_action field doesn't exist in current sing-box schema", http.StatusNotImplemented)
 }
 
 // buildRuleActionFromForm builds a rule action map from form data
