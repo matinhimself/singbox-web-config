@@ -55,21 +55,23 @@
                               placeholder="{{.Placeholder}}">{{.Value}}</textarea>
                 {{else if eq .Type "array"}}
                     <div class="array-field-container" id="array-{{.JSONTag}}">
+                        {{$field := .}}
                         {{if .Values}}
                             {{range .Values}}
                             <div class="array-field-item">
-                                {{if $.Options}}
-                                <select name="{{$.JSONTag}}[]">
+                                {{if $field.Options}}
+                                <select name="{{$field.JSONTag}}[]">
                                     <option value="">-- Select --</option>
-                                    {{range $.Options}}
-                                    <option value="{{.}}" {{if eq . $}}selected{{end}}>{{.}}</option>
+                                    {{$currentValue := .}}
+                                    {{range $field.Options}}
+                                    <option value="{{.}}" {{if eq . $currentValue}}selected{{end}}>{{.}}</option>
                                     {{end}}
                                 </select>
                                 {{else}}
                                 <input type="text"
-                                       name="{{$.JSONTag}}[]"
+                                       name="{{$field.JSONTag}}[]"
                                        value="{{.}}"
-                                       placeholder="{{if $.Placeholder}}{{$.Placeholder}}{{else}}Enter value{{end}}">
+                                       placeholder="{{if $field.Placeholder}}{{$field.Placeholder}}{{else}}Enter value{{end}}">
                                 {{end}}
                                 <button type="button" class="button button-small button-danger" onclick="removeArrayField(this)">-</button>
                             </div>
