@@ -18,6 +18,26 @@
     --text-secondary: #64748b;
     --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
     --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+    --code-background: #1f2937;
+    --code-text: #f3f4f6;
+}
+
+/* Dark Mode */
+[data-theme="dark"] {
+    --primary-color: #60a5fa;
+    --primary-hover: #3b82f6;
+    --secondary-color: #94a3b8;
+    --success-color: #34d399;
+    --danger-color: #f87171;
+    --background: #0f172a;
+    --surface: #1e293b;
+    --border: #334155;
+    --text: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.3);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.3);
+    --code-background: #0f172a;
+    --code-text: #e2e8f0;
 }
 
 body {
@@ -509,8 +529,8 @@ footer {
 }
 
 .logs-content {
-    background-color: #1f2937;
-    color: #f3f4f6;
+    background-color: var(--code-background);
+    color: var(--code-text);
     padding: 1rem;
     border-radius: 0.375rem;
     overflow-x: auto;
@@ -873,8 +893,8 @@ footer {
 }
 
 .rule-preview pre {
-    background-color: #1f2937;
-    color: #f3f4f6;
+    background-color: var(--code-background);
+    color: var(--code-text);
     padding: 1rem;
     border-radius: 0.375rem;
     overflow-x: auto;
@@ -988,8 +1008,8 @@ footer {
 
 .rule-action-json pre {
     margin-top: 0.5rem;
-    background-color: #1f2937;
-    color: #f3f4f6;
+    background-color: var(--code-background);
+    color: var(--code-text);
     padding: 1rem;
     border-radius: 0.375rem;
     overflow-x: auto;
@@ -1065,4 +1085,82 @@ footer {
         width: 100%;
         justify-content: flex-end;
     }
+}
+
+/* Theme Toggle */
+.theme-toggle {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 0.375rem;
+    color: var(--text-secondary);
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+}
+
+.theme-toggle:hover {
+    background-color: var(--background);
+    color: var(--primary-color);
+}
+
+/* Form input dark mode improvements */
+[data-theme="dark"] .form-group input,
+[data-theme="dark"] .form-group select,
+[data-theme="dark"] .form-group textarea,
+[data-theme="dark"] .search-input,
+[data-theme="dark"] .filter-select {
+    background-color: var(--surface);
+    color: var(--text);
+    border-color: var(--border);
+}
+
+[data-theme="dark"] .form-group input:focus,
+[data-theme="dark"] .form-group select:focus,
+[data-theme="dark"] .form-group textarea:focus,
+[data-theme="dark"] .search-input:focus,
+[data-theme="dark"] .filter-select:focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+/* Status badges dark mode adjustments */
+[data-theme="dark"] .status-active {
+    background-color: #064e3b;
+    color: #6ee7b7;
+}
+
+[data-theme="dark"] .status-inactive {
+    background-color: #7f1d1d;
+    color: #fca5a5;
+}
+
+[data-theme="dark"] .status-connecting {
+    background-color: #78350f;
+    color: #fcd34d;
+}
+
+[data-theme="dark"] .status-connected {
+    background-color: #064e3b;
+    color: #6ee7b7;
+}
+
+[data-theme="dark"] .status-disconnected,
+[data-theme="dark"] .status-error {
+    background-color: #7f1d1d;
+    color: #fca5a5;
+}
+
+/* Network badges dark mode */
+[data-theme="dark"] .network-tcp {
+    background-color: #1e3a8a;
+    color: #93c5fd;
+}
+
+[data-theme="dark"] .network-udp {
+    background-color: #831843;
+    color: #f9a8d4;
 }
