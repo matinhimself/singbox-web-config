@@ -1,0 +1,21 @@
+{{define "proxy-settings.html"}}
+<div class="success-message">
+    Settings saved successfully!
+</div>
+<style>
+.success-message {
+    background: #ecfdf5;
+    color: var(--success-color);
+    padding: 1rem;
+    border-radius: 6px;
+    border: 1px solid #a7f3d0;
+    margin-top: 1rem;
+    animation: fadeIn 0.3s;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+</style>
+{{end}}

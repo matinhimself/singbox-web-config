@@ -1,0 +1,232 @@
+{{define "proxies.html"}}
+<!DOCTYPE html>
+<html lang="en">
+{{template "head" .}}
+<body>
+    {{template "navbar"}}
+
+    <main class="container">
+        <div class="page-header">
+            <h1>Proxy Management</h1>
+            <p>Switch and manage your Clash proxies</p>
+        </div>
+
+        <!-- Settings Section -->
+        <div class="section">
+            <div class="section-header">
+                <h2>Clash API Configuration</h2>
+                <button class="button button-small"
+                        id="toggle-settings"
+                        onclick="document.getElementById('settings-section').classList.toggle('hidden')">
+                    Configure
+                </button>
+            </div>
+            <div id="settings-section" class="{{if .Data.ClashURL}}hidden{{end}}">
+                <div class="card">
+                    <form hx-post="/api/proxies/settings"
+                          hx-target="#proxies-content"
+                          hx-trigger="submit">
+                        <div class="form-group">
+                            <label for="clash_url">Clash API URL</label>
+                            <input type="text"
+                                   id="clash_url"
+                                   name="clash_url"
+                                   value="{{.Data.ClashURL}}"
+                                   placeholder="http://127.0.0.1:9090"
+                                   required>
+                            <small>The base URL for your Clash API</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="clash_secret">Secret (Optional)</label>
+                            <input type="password"
+                                   id="clash_secret"
+                                   name="clash_secret"
+                                   value="{{.Data.ClashSecret}}"
+                                   placeholder="Your Clash API secret">
+                        </div>
+                        <button type="submit" class="button button-primary">Save & Connect</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Proxies Section -->
+        <div class="section">
+            <div class="section-header">
+                <h2>Proxy Groups</h2>
+                <button class="button button-primary"
+                        hx-get="/api/proxies/groups"
+                        hx-target="#proxies-content"
+                        hx-indicator="#loading-indicator">
+                    Refresh
+                </button>
+            </div>
+
+            <div id="loading-indicator" class="htmx-indicator loading">
+                Loading proxies...
+            </div>
+
+            <div id="proxies-content"
+                 hx-get="/api/proxies/groups"
+                 hx-trigger="load, proxySwitched from:body, settingsUpdated from:body"
+                 hx-indicator="#loading-indicator">
+                <!-- Proxy groups will be loaded here -->
+            </div>
+        </div>
+    </main>
+
+    {{template "footer"}}
+
+    <style>
+        .hidden {
+            display: none;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .proxy-groups {
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .proxy-group-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: var(--shadow);
+            transition: box-shadow 0.2s;
+        }
+
+        .proxy-group-card:hover {
+            box-shadow: var(--shadow-lg);
+        }
+
+        .proxy-group-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .proxy-group-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .proxy-type-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            background: var(--background);
+            color: var(--text-secondary);
+        }
+
+        .proxy-nodes {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        .proxy-node {
+            padding: 0.75rem;
+            border: 2px solid var(--border);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+            background: var(--surface);
+            position: relative;
+        }
+
+        .proxy-node:hover {
+            border-color: var(--primary-color);
+            transform: translateY(-2px);
+        }
+
+        .proxy-node.active {
+            border-color: var(--success-color);
+            background: #ecfdf5;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+
+        .proxy-node.active::before {
+            content: '';
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            width: 12px;
+            height: 12px;
+            background: var(--success-color);
+            border-radius: 50%;
+            border: 2px solid var(--surface);
+        }
+
+        .proxy-node-name {
+            font-weight: 500;
+            color: var(--text);
+            margin-bottom: 0.25rem;
+            word-break: break-word;
+        }
+
+        .proxy-node-delay {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .proxy-node-delay.fast {
+            color: var(--success-color);
+            font-weight: 600;
+        }
+
+        .proxy-node-delay.medium {
+            color: #f59e0b;
+            font-weight: 600;
+        }
+
+        .proxy-node-delay.slow {
+            color: var(--danger-color);
+            font-weight: 600;
+        }
+
+        .group-test-button {
+            margin-top: 0.5rem;
+        }
+
+        .htmx-indicator {
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .htmx-request .htmx-indicator {
+            opacity: 1;
+        }
+
+        .htmx-request.htmx-indicator {
+            opacity: 1;
+        }
+
+        .no-proxies {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-secondary);
+        }
+
+        .no-proxies-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+    </style>
+</body>
+</html>
+{{end}}

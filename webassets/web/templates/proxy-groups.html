@@ -1,0 +1,113 @@
+{{define "proxy-groups.html"}}
+{{if .Groups}}
+<div class="proxy-groups">
+    {{range .Groups}}
+    <div class="proxy-group-card">
+        <div class="proxy-group-header">
+            <div>
+                <h3 class="proxy-group-title">{{.Name}}</h3>
+                <span class="proxy-type-badge">{{.Type}}</span>
+            </div>
+            {{if .CanSwitch}}
+            <button class="button button-small"
+                    onclick="testGroupDelay('{{.Name}}', this)"
+                    title="Test all proxies in this group">
+                Test Speed
+            </button>
+            {{end}}
+        </div>
+
+        {{if .Now}}
+        <div style="margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.875rem;">
+            Current: <strong style="color: var(--success-color);">{{.Now}}</strong>
+        </div>
+        {{end}}
+
+        <div class="proxy-nodes">
+            {{range .Proxies}}
+            <div class="proxy-node {{if .IsNow}}active{{end}}"
+                 {{if $.CanSwitch}}
+                 hx-post="/api/proxies/switch"
+                 hx-vals='{"group": "{{$.Name}}", "proxy": "{{.Name}}"}'
+                 hx-target="#proxies-content"
+                 hx-indicator="#loading-indicator"
+                 {{end}}>
+                <div class="proxy-node-name">{{.Name}}</div>
+                {{if .Delay}}
+                <div class="proxy-node-delay {{if lt .Delay 200}}fast{{else if lt .Delay 500}}medium{{else}}slow{{end}}">
+                    {{.Delay}}ms
+                </div>
+                {{else}}
+                <div class="proxy-node-delay">-</div>
+                {{end}}
+                {{if .Type}}
+                <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">
+                    {{.Type}}
+                </div>
+                {{end}}
+            </div>
+            {{end}}
+        </div>
+    </div>
+    {{end}}
+</div>
+{{else}}
+<div class="no-proxies">
+    <div class="no-proxies-icon">🔌</div>
+    <h3>No Proxy Groups Found</h3>
+    <p>Make sure your Clash API is configured correctly and running.</p>
+</div>
+{{end}}
+
+<script>
+function testGroupDelay(groupName, button) {
+    button.disabled = true;
+    button.textContent = 'Testing...';
+
+    fetch(`/api/proxies/group-delay-test?group=${encodeURIComponent(groupName)}`)
+        .then(response => response.json())
+        .then(data => {
+            console.log('Delay test results:', data);
+
+            // Update the UI with delay results
+            if (data.results) {
+                data.results.forEach(result => {
+                    const nodes = document.querySelectorAll('.proxy-node');
+                    nodes.forEach(node => {
+                        const nameEl = node.querySelector('.proxy-node-name');
+                        if (nameEl && nameEl.textContent === result.name) {
+                            const delayEl = node.querySelector('.proxy-node-delay');
+                            if (delayEl) {
+                                if (result.error) {
+                                    delayEl.textContent = 'Timeout';
+                                    delayEl.className = 'proxy-node-delay slow';
+                                } else {
+                                    delayEl.textContent = result.delay + 'ms';
+                                    if (result.delay < 200) {
+                                        delayEl.className = 'proxy-node-delay fast';
+                                    } else if (result.delay < 500) {
+                                        delayEl.className = 'proxy-node-delay medium';
+                                    } else {
+                                        delayEl.className = 'proxy-node-delay slow';
+                                    }
+                                }
+                            }
+                        }
+                    });
+                });
+            }
+
+            button.disabled = false;
+            button.textContent = 'Test Speed';
+        })
+        .catch(error => {
+            console.error('Error testing delays:', error);
+            button.disabled = false;
+            button.textContent = 'Test Failed';
+            setTimeout(() => {
+                button.textContent = 'Test Speed';
+            }, 2000);
+        });
+}
+</script>
+{{end}}
