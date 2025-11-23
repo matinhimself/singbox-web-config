@@ -42,7 +42,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleRulesPage(w http.ResponseWriter, r *http.Request) {
 	data := PageData{
 		Title: "Route Rules",
-		Data: map[string]interface{}{
+		Data:  map[string]interface{}{
 			// RuleTypes removed - types.AvailableRuleTypes() doesn't exist
 		},
 	}
@@ -464,40 +464,27 @@ func (s *Server) buildRuleFromForm(r *http.Request) map[string]interface{} {
 			continue
 		}
 
-		// Skip empty values
-		if len(values) == 0 || (len(values) == 1 && values[0] == "") {
-			continue
-		}
-
-		// Handle array fields
-		// Check if the field looks like it should be an array
-		if strings.HasSuffix(key, "[]") || len(values) > 1 {
-			// Remove [] suffix if present
+		if strings.HasSuffix(key, "[]") {
 			fieldName := strings.TrimSuffix(key, "[]")
 
-			// Parse comma-separated values
-			var allValues []string
+			var collectedValues []string
 			for _, v := range values {
-				if v != "" {
-					// Split by comma for multiple values in one field
-					parts := strings.Split(v, ",")
-					for _, part := range parts {
-						trimmed := strings.TrimSpace(part)
-						if trimmed != "" {
-							allValues = append(allValues, trimmed)
-						}
+				parts := strings.Split(v, ",")
+				for _, part := range parts {
+					trimmedPart := strings.TrimSpace(part)
+					if trimmedPart != "" {
+						collectedValues = append(collectedValues, trimmedPart)
 					}
 				}
 			}
 
-			if len(allValues) > 0 {
-				rule[fieldName] = allValues
+			if len(collectedValues) > 0 {
+				rule[fieldName] = collectedValues
 			}
 		} else {
-			// Single value field
-			value := values[0]
-			if value != "" {
-				rule[key] = value
+			// Handle single value fields
+			if len(values) > 0 && values[0] != "" {
+				rule[key] = values[0]
 			}
 		}
 	}
