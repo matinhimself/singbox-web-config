@@ -7,9 +7,9 @@ on:
       - 'release/**'
     tags:
       - 'v*'
-  pull_request:
-    branches:
-      - main
+  # pull_request:
+  #   branches:
+  #     - main
   workflow_dispatch:
 
 env:
@@ -24,11 +24,11 @@ jobs:
         include:
           - arch: amd64
             goarch: amd64
-          - arch: arm64
-            goarch: arm64
-          - arch: armhf
-            goarch: arm
-            goarm: 7
+          # - arch: arm64
+          #   goarch: arm64
+          # - arch: armhf
+          #   goarch: arm
+          #   goarm: 7
 
     steps:
       - name: Checkout code
