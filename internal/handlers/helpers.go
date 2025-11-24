@@ -17,6 +17,8 @@ func templateFuncMap() template.FuncMap {
 		"derefUint32": derefUint32,
 		"strPtrEq":    strPtrEq,
 		"dict":        dict,
+		"list":        list,
+		"has":         has,
 	}
 }
 
@@ -76,4 +78,21 @@ func dict(values ...interface{}) (map[string]interface{}, error) {
 	}
 
 	return result, nil
+}
+
+// list creates a slice from the given arguments
+// Example: list "item1" "item2" "item3" -> []string{"item1", "item2", "item3"}
+func list(values ...string) []string {
+	return values
+}
+
+// has checks if a value exists in a slice
+// Example: has "needle" (list "hay" "needle" "stack") -> true
+func has(value string, slice []string) bool {
+	for _, item := range slice {
+		if item == value {
+			return true
+		}
+	}
+	return false
 }
