@@ -1,27 +1,45 @@
 {{define "rule-form.html"}}
 <div class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50" id="rule-form-modal">
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div class="p-6 border-b border-gray-200 dark:border-gray-700">
-            <h2 class="text-2xl font-bold">{{.Form.Title}}</h2>
-            <button class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200" onclick="document.getElementById('rule-form-modal').remove()">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-            </button>
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] flex flex-col">
+        <!-- Header -->
+        <div class="p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+            <div class="flex items-center justify-between">
+                <h2 class="text-2xl font-bold text-gray-900 dark:text-white">{{.Form.Title}}</h2>
+                <button class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200" onclick="document.getElementById('rule-form-modal').remove()">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
         </div>
 
         <form hx-post="{{if .EditMode}}/api/rules/update{{else}}/api/rules/create{{end}}"
               hx-target="#rules-list"
               hx-swap="innerHTML"
-              class="p-6 space-y-4"
+              class="flex-1 flex flex-col overflow-hidden"
               onsubmit="closeModalOnSuccess(event)">
             {{if .EditMode}}
             <input type="hidden" name="index" value="{{.RuleIndex}}">
             {{end}}
 
-            <div class="grid grid-cols-1 gap-4">
+            <!-- Search and Rule Type Bar -->
+            <div class="px-6 pt-4 pb-2 border-b border-gray-200 dark:border-gray-700 flex-shrink-0 space-y-3">
+                <!-- Search Bar -->
+                <div class="relative">
+                    <input type="text"
+                           id="field-search"
+                           placeholder="Search fields..."
+                           class="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                           oninput="filterFields(this.value)">
+                    <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                    <span id="field-count" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-sm text-gray-500 dark:text-gray-400"></span>
+                </div>
+
+                <!-- Rule Type Selector -->
                 <div>
-                    <label for="rule_type" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Rule Type</label>
+                    <label for="rule_type" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Rule Type</label>
                     <select name="rule_type" id="rule_type"
-                            class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                            class="block w-full px-3 py-2 text-base border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
                             hx-get="/api/rules/form{{if .EditMode}}?index={{.RuleIndex}}{{end}}"
                             hx-target="#rule-form-modal"
                             hx-swap="outerHTML"
@@ -32,84 +50,254 @@
                         {{end}}
                     </select>
                 </div>
-
-                {{range .Form.Fields}}
-                <div class="form-group" data-field="{{.JSONTag}}">
-                    <label for="{{.JSONTag}}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        {{.Label}}
-                        {{if .Required}}<span class="text-red-500">*</span>{{end}}
-                    </label>
-
-                    <div class="mt-1">
-                    {{if eq .Type "checkbox"}}
-                        <input type="checkbox" name="{{.JSONTag}}" id="{{.JSONTag}}" class="rounded h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500" {{if .Value}}checked{{end}}>
-                    {{else if eq .Type "select"}}
-                        <select name="{{.JSONTag}}" id="{{.JSONTag}}" class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md" {{if eq .JSONTag "action"}}onchange="updateActionFields()"{{end}}>
-                            <option value="">-- Select --</option>
-                            {{range .Options}}
-                            <option value="{{.}}" {{if eq . $.Value}}selected{{end}}>{{.}}</option>
-                            {{end}}
-                        </select>
-                    {{else if eq .Type "textarea"}}
-                        <textarea name="{{.JSONTag}}" id="{{.JSONTag}}" rows="3" class="block w-full shadow-sm sm:text-sm border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white" placeholder="{{.Placeholder}}">{{.Value}}</textarea>
-                    {{else if eq .Type "array"}}
-                        <div class="space-y-2" id="array-{{.JSONTag}}">
-                            {{$field := .}}
-                            {{if .Values}}
-                                {{range .Values}}
-                                <div class="flex items-center space-x-2">
-                                    {{if $field.Options}}
-                                    <select name="{{$field.JSONTag}}[]" class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
-                                        <option value="">-- Select --</option>
-                                        {{$currentValue := .}}
-                                        {{range $field.Options}}
-                                        <option value="{{.}}" {{if eq . $currentValue}}selected{{end}}>{{.}}</option>
-                                        {{end}}
-                                    </select>
-                                    {{else}}
-                                    <input type="text" name="{{$field.JSONTag}}[]" value="{{.}}" placeholder="{{if $field.Placeholder}}{{$field.Placeholder}}{{else}}Enter value{{end}}" class="block w-full shadow-sm sm:text-sm border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                                    {{end}}
-                                    <button type="button" class="bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-2 rounded" onclick="removeArrayField(this)">-</button>
-                                </div>
-                                {{end}}
-                            {{else}}
-                                <div class="flex items-center space-x-2">
-                                    {{if .Options}}
-                                    <select name="{{.JSONTag}}[]" class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
-                                        <option value="">-- Select --</option>
-                                        {{range .Options}}
-                                        <option value="{{.}}">{{.}}</option>
-                                        {{end}}
-                                    </select>
-                                    {{else}}
-                                    <input type="text" name="{{.JSONTag}}[]" placeholder="{{if .Placeholder}}{{.Placeholder}}{{else}}Enter value{{end}}" class="block w-full shadow-sm sm:text-sm border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                                    {{end}}
-                                    <button type="button" class="bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-2 rounded" onclick="removeArrayField(this)">-</button>
-                                </div>
-                            {{end}}
-                        </div>
-                        <button type="button" class="mt-2 bg-blue-500 hover:bg-blue-600 text-white font-bold py-1 px-2 rounded text-sm" onclick="addArrayField('array-{{.JSONTag}}', '{{.JSONTag}}', '{{if .Placeholder}}{{.Placeholder}}{{else}}Enter value{{end}}', {{if .Options}}true{{else}}false{{end}}, {{if .Options}}[{{range $i, $opt := .Options}}{{if $i}},{{end}}'{{$opt}}'{{end}}]{{else}}[]{{end}})">+ Add</button>
-                    {{else if eq .Type "number"}}
-                        <input type="number" name="{{.JSONTag}}" id="{{.JSONTag}}" value="{{.Value}}" placeholder="{{.Placeholder}}" class="block w-full shadow-sm sm:text-sm border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                    {{else}}
-                        <input type="text" name="{{.JSONTag}}" id="{{.JSONTag}}" value="{{.Value}}" placeholder="{{.Placeholder}}" class="block w-full shadow-sm sm:text-sm border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                    {{end}}
-                    </div>
-
-                    {{if .Description}}
-                    <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">{{.Description}}</p>
-                    {{end}}
-                </div>
-                {{end}}
             </div>
 
-            <div class="pt-6 border-t border-gray-200 dark:border-gray-700 flex justify-end space-x-2">
-                <button type="button" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded" onclick="document.getElementById('rule-form-modal').remove()">Cancel</button>
-                <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">{{if .EditMode}}Update Rule{{else}}Create Rule{{end}}</button>
+            <!-- Form Fields - Scrollable -->
+            <div class="flex-1 overflow-y-auto px-6 py-4" id="form-fields-container">
+                <div class="space-y-6">
+                    {{$actionFields := list "Action" "Outbound" "Sniffer" "SniffTimeout" "Server" "Strategy" "DNSStrategy" "DisableCache" "RewriteTTL" "ClientSubnet" "Method" "NoDrop" "OverrideAddress" "OverridePort" "NetworkStrategy" "FallbackDelay" "UDPDisableDomainUnmapping" "UDPConnect" "UDPTimeout" "TLSFragment" "TLSFragmentFallbackDelay" "TLSRecordFragment"}}
+                    {{$networkFields := list "Inbound" "IPVersion" "Network" "AuthUser" "Protocol" "Client"}}
+                    {{$domainFields := list "Domain" "DomainSuffix" "DomainKeyword" "DomainRegex" "Geosite"}}
+                    {{$ipFields := list "SourceGeoIP" "GeoIP" "SourceIPCIDR" "SourceIPIsPrivate" "IPCIDR" "IPIsPrivate"}}
+                    {{$portFields := list "SourcePort" "SourcePortRange" "Port" "PortRange"}}
+                    {{$processFields := list "ProcessName" "ProcessPath" "ProcessPathRegex" "PackageName" "User" "UserID"}}
+                    {{$deviceFields := list "ClashMode" "NetworkType" "NetworkIsExpensive" "NetworkIsConstrained" "WIFISSID" "WIFIBSSID" "InterfaceAddress" "NetworkInterfaceAddress" "DefaultInterfaceAddress"}}
+                    {{$advancedFields := list "PreferredBy" "RuleSet" "RuleSetIPCIDRMatchSource" "Invert" "QueryType" "IPAcceptAny" "RuleSetIPCIDRAcceptEmpty"}}
+
+                    <!-- Action Section -->
+                    <div class="field-section" data-section="action">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                            </svg>
+                            Action Configuration
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {{range .Form.Fields}}
+                                {{if has .Name $actionFields}}
+                                    {{template "field-template" .}}
+                                {{end}}
+                            {{end}}
+                        </div>
+                    </div>
+
+                    <!-- Network Matching -->
+                    <div class="field-section" data-section="network">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path>
+                            </svg>
+                            Network Matching
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {{range .Form.Fields}}
+                                {{if has .Name $networkFields}}
+                                    {{template "field-template" .}}
+                                {{end}}
+                            {{end}}
+                        </div>
+                    </div>
+
+                    <!-- Domain Matching -->
+                    <div class="field-section" data-section="domain">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            Domain Matching
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {{range .Form.Fields}}
+                                {{if has .Name $domainFields}}
+                                    {{template "field-template" .}}
+                                {{end}}
+                            {{end}}
+                        </div>
+                    </div>
+
+                    <!-- IP Matching -->
+                    <div class="field-section" data-section="ip">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path>
+                            </svg>
+                            IP Matching
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {{range .Form.Fields}}
+                                {{if has .Name $ipFields}}
+                                    {{template "field-template" .}}
+                                {{end}}
+                            {{end}}
+                        </div>
+                    </div>
+
+                    <!-- Port Matching -->
+                    <div class="field-section" data-section="port">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"></path>
+                            </svg>
+                            Port Matching
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {{range .Form.Fields}}
+                                {{if has .Name $portFields}}
+                                    {{template "field-template" .}}
+                                {{end}}
+                            {{end}}
+                        </div>
+                    </div>
+
+                    <!-- Process Matching -->
+                    <div class="field-section" data-section="process">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path>
+                            </svg>
+                            Process & User Matching
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {{range .Form.Fields}}
+                                {{if has .Name $processFields}}
+                                    {{template "field-template" .}}
+                                {{end}}
+                            {{end}}
+                        </div>
+                    </div>
+
+                    <!-- Device Matching -->
+                    <div class="field-section" data-section="device">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                            </svg>
+                            Device & Network Type
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {{range .Form.Fields}}
+                                {{if has .Name $deviceFields}}
+                                    {{template "field-template" .}}
+                                {{end}}
+                            {{end}}
+                        </div>
+                    </div>
+
+                    <!-- Advanced Options -->
+                    <div class="field-section" data-section="advanced">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            </svg>
+                            Advanced Options
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {{range .Form.Fields}}
+                                {{if has .Name $advancedFields}}
+                                    {{template "field-template" .}}
+                                {{end}}
+                            {{end}}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex-shrink-0 flex justify-between items-center">
+                <button type="button"
+                        class="px-4 py-2 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+                        onclick="clearAllFields()">
+                    Clear All
+                </button>
+                <div class="flex space-x-2">
+                    <button type="button"
+                            class="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium rounded-lg transition-colors"
+                            onclick="document.getElementById('rule-form-modal').remove()">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                            class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
+                        {{if .EditMode}}Update Rule{{else}}Create Rule{{end}}
+                    </button>
+                </div>
             </div>
         </form>
     </div>
 </div>
+
+<!-- Field Template -->
+{{define "field-template"}}
+<div class="form-group" data-field="{{.JSONTag}}" data-label="{{.Label}}">
+    <label for="{{.JSONTag}}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        {{.Label}}
+        {{if .Required}}<span class="text-red-500">*</span>{{end}}
+    </label>
+
+    <div class="mt-1">
+    {{if eq .Type "checkbox"}}
+        <div class="flex items-center">
+            <input type="checkbox" name="{{.JSONTag}}" id="{{.JSONTag}}" class="rounded h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500" {{if .Value}}checked{{end}}>
+            <label for="{{.JSONTag}}" class="ml-2 text-sm text-gray-600 dark:text-gray-400">Enable</label>
+        </div>
+    {{else if eq .Type "select"}}
+        <select name="{{.JSONTag}}" id="{{.JSONTag}}" class="block w-full px-3 py-2 text-base border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-md" {{if eq .JSONTag "action"}}onchange="updateActionFields()"{{end}}>
+            <option value="">-- Select --</option>
+            {{range .Options}}
+            <option value="{{.}}" {{if eq . $.Value}}selected{{end}}>{{.}}</option>
+            {{end}}
+        </select>
+    {{else if eq .Type "textarea"}}
+        <textarea name="{{.JSONTag}}" id="{{.JSONTag}}" rows="3" class="block w-full px-3 py-2 shadow-sm text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="{{.Placeholder}}">{{.Value}}</textarea>
+    {{else if eq .Type "array"}}
+        <div class="space-y-2" id="array-{{.JSONTag}}">
+            {{$field := .}}
+            {{if .Values}}
+                {{range .Values}}
+                <div class="flex items-center space-x-2">
+                    {{if $field.Options}}
+                    <select name="{{$field.JSONTag}}[]" class="block w-full px-3 py-2 text-base border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-md">
+                        <option value="">-- Select --</option>
+                        {{$currentValue := .}}
+                        {{range $field.Options}}
+                        <option value="{{.}}" {{if eq . $currentValue}}selected{{end}}>{{.}}</option>
+                        {{end}}
+                    </select>
+                    {{else}}
+                    <input type="text" name="{{$field.JSONTag}}[]" value="{{.}}" placeholder="{{if $field.Placeholder}}{{$field.Placeholder}}{{else}}Enter value{{end}}" class="block w-full px-3 py-2 shadow-sm text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    {{end}}
+                    <button type="button" class="flex-shrink-0 bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-3 rounded transition-colors" onclick="removeArrayField(this)">−</button>
+                </div>
+                {{end}}
+            {{else}}
+                <div class="flex items-center space-x-2">
+                    {{if .Options}}
+                    <select name="{{.JSONTag}}[]" class="block w-full px-3 py-2 text-base border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-md">
+                        <option value="">-- Select --</option>
+                        {{range .Options}}
+                        <option value="{{.}}">{{.}}</option>
+                        {{end}}
+                    </select>
+                    {{else}}
+                    <input type="text" name="{{.JSONTag}}[]" placeholder="{{if .Placeholder}}{{.Placeholder}}{{else}}Enter value{{end}}" class="block w-full px-3 py-2 shadow-sm text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    {{end}}
+                    <button type="button" class="flex-shrink-0 bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-3 rounded transition-colors" onclick="removeArrayField(this)">−</button>
+                </div>
+            {{end}}
+        </div>
+        <button type="button" class="mt-2 bg-blue-500 hover:bg-blue-600 text-white font-medium py-1.5 px-3 rounded text-sm transition-colors" onclick="addArrayField('array-{{.JSONTag}}', '{{.JSONTag}}', '{{if .Placeholder}}{{.Placeholder}}{{else}}Enter value{{end}}', {{if .Options}}true{{else}}false{{end}}, {{if .Options}}[{{range $i, $opt := .Options}}{{if $i}},{{end}}'{{$opt}}'{{end}}]{{else}}[]{{end}})">+ Add</button>
+    {{else if eq .Type "number"}}
+        <input type="number" name="{{.JSONTag}}" id="{{.JSONTag}}" value="{{.Value}}" placeholder="{{.Placeholder}}" class="block w-full px-3 py-2 shadow-sm text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+    {{else}}
+        <input type="text" name="{{.JSONTag}}" id="{{.JSONTag}}" value="{{.Value}}" placeholder="{{.Placeholder}}" class="block w-full px-3 py-2 shadow-sm text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+    {{end}}
+    </div>
+
+    {{if .Description}}
+    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{.Description}}</p>
+    {{end}}
+</div>
+{{end}}
 
 <script>
 const actionFieldMap = {
@@ -158,6 +346,60 @@ function updateActionFields() {
             field.style.display = 'none';
         }
     });
+
+    updateFieldCount();
+}
+
+function filterFields(searchTerm) {
+    const term = searchTerm.toLowerCase().trim();
+    const allFields = document.querySelectorAll('.form-group[data-field]');
+    const sections = document.querySelectorAll('.field-section');
+
+    if (!term) {
+        // Show all fields when search is empty
+        allFields.forEach(field => {
+            field.style.display = 'block';
+        });
+        sections.forEach(section => {
+            section.style.display = 'block';
+        });
+        updateActionFields(); // Reapply action field visibility
+        updateFieldCount();
+        return;
+    }
+
+    // Hide all sections first
+    sections.forEach(section => {
+        section.style.display = 'none';
+    });
+
+    let visibleCount = 0;
+    allFields.forEach(field => {
+        const fieldName = field.getAttribute('data-field').toLowerCase();
+        const fieldLabel = field.getAttribute('data-label').toLowerCase();
+
+        if (fieldName.includes(term) || fieldLabel.includes(term)) {
+            field.style.display = 'block';
+            // Show parent section
+            const section = field.closest('.field-section');
+            if (section) {
+                section.style.display = 'block';
+            }
+            visibleCount++;
+        } else {
+            field.style.display = 'none';
+        }
+    });
+
+    updateFieldCount();
+}
+
+function updateFieldCount() {
+    const visibleFields = document.querySelectorAll('.form-group[data-field][style*="display: block"], .form-group[data-field]:not([style*="display: none"])');
+    const countElement = document.getElementById('field-count');
+    if (countElement) {
+        countElement.textContent = `${visibleFields.length} fields`;
+    }
 }
 
 function addArrayField(containerId, fieldName, placeholder, hasOptions, options) {
@@ -167,7 +409,7 @@ function addArrayField(containerId, fieldName, placeholder, hasOptions, options)
 
     let inputHtml;
     if (hasOptions && options && options.length > 0) {
-        let selectHTML = `<select name="${fieldName}[]" class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">`;
+        let selectHTML = `<select name="${fieldName}[]" class="block w-full px-3 py-2 text-base border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-md">`;
         selectHTML += '<option value="">-- Select --</option>';
         options.forEach(opt => {
             selectHTML += `<option value="${opt}">${opt}</option>`;
@@ -175,10 +417,10 @@ function addArrayField(containerId, fieldName, placeholder, hasOptions, options)
         selectHTML += '</select>';
         inputHtml = selectHTML;
     } else {
-        inputHtml = `<input type="text" name="${fieldName}[]" placeholder="${placeholder}" class="block w-full shadow-sm sm:text-sm border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">`;
+        inputHtml = `<input type="text" name="${fieldName}[]" placeholder="${placeholder}" class="block w-full px-3 py-2 shadow-sm text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500">`;
     }
-    
-    newItem.innerHTML = inputHtml + `<button type="button" class="bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-2 rounded" onclick="removeArrayField(this)">-</button>`;
+
+    newItem.innerHTML = inputHtml + `<button type="button" class="flex-shrink-0 bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-3 rounded transition-colors" onclick="removeArrayField(this)">−</button>`;
     container.appendChild(newItem);
 }
 
@@ -187,6 +429,40 @@ function removeArrayField(button) {
     if (container.children.length > 1) {
         button.parentElement.remove();
     }
+}
+
+function clearAllFields() {
+    if (!confirm('Are you sure you want to clear all fields?')) {
+        return;
+    }
+
+    // Clear text inputs
+    document.querySelectorAll('input[type="text"], input[type="number"], textarea').forEach(input => {
+        input.value = '';
+    });
+
+    // Reset selects
+    document.querySelectorAll('select:not(#rule_type)').forEach(select => {
+        select.selectedIndex = 0;
+    });
+
+    // Uncheck checkboxes
+    document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+        checkbox.checked = false;
+    });
+
+    // Reset array fields to single empty input
+    document.querySelectorAll('[id^="array-"]').forEach(container => {
+        const children = Array.from(container.children);
+        for (let i = 1; i < children.length; i++) {
+            children[i].remove();
+        }
+        // Clear first child's input
+        const firstInput = children[0]?.querySelector('input, select');
+        if (firstInput) {
+            firstInput.value = '';
+        }
+    });
 }
 
 function closeModalOnSuccess(event) {
@@ -200,14 +476,17 @@ function closeModalOnSuccess(event) {
     }, { once: true });
 }
 
-
+// Initialize on load
 document.addEventListener('DOMContentLoaded', function() {
     updateActionFields();
+    updateFieldCount();
 });
 
+// Reinitialize after HTMX swap
 document.body.addEventListener('htmx:afterSwap', function(event) {
     if (event.detail.target.id === 'rule-form-modal') {
         updateActionFields();
+        updateFieldCount();
     }
 });
 </script>
