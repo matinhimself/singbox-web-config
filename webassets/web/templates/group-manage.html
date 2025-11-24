@@ -1,0 +1,282 @@
+{{define "group-manage.html"}}
+{{$outbound := .Outbound}}
+{{$type := index $outbound "type"}}
+{{$tag := index $outbound "tag"}}
+<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" id="group-modal" onclick="closeOnBackdropClick(event)">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                    Manage Group: {{$tag}}
+                </h2>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                    {{if eq $type "selector"}}
+                        Select outbounds for manual selection
+                    {{else}}
+                        Select outbounds for automatic URL testing
+                    {{end}}
+                </p>
+            </div>
+            <button onclick="closeGroupModal()" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+
+        <form hx-post="/api/outbounds/group/update"
+              hx-target="#outbounds-list"
+              hx-swap="innerHTML"
+              onsubmit="return validateGroupForm(event)">
+
+            <input type="hidden" name="index" value="{{.Index}}">
+
+            <!-- Current Members -->
+            <div class="mb-6">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
+                    Current Members ({{len .GroupMembers}})
+                </h3>
+                <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 max-h-60 overflow-y-auto">
+                    {{if .GroupMembers}}
+                    <div id="current-members" class="space-y-2">
+                        {{range $i, $member := .GroupMembers}}
+                        <div class="flex items-center justify-between bg-white dark:bg-gray-800 p-3 rounded shadow-sm">
+                            <div class="flex items-center">
+                                <span class="text-gray-700 dark:text-gray-300 font-medium">{{add $i 1}}. {{$member}}</span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <input type="checkbox" name="members[]" value="{{$member}}" checked
+                                       class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600">
+                                {{if gt $i 0}}
+                                <button type="button" onclick="moveUp(this, {{$i}})"
+                                        class="text-blue-500 hover:text-blue-700 dark:text-blue-400">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/>
+                                    </svg>
+                                </button>
+                                {{end}}
+                                {{if lt $i (sub (len $.GroupMembers) 1)}}
+                                <button type="button" onclick="moveDown(this, {{$i}})"
+                                        class="text-blue-500 hover:text-blue-700 dark:text-blue-400">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                    </svg>
+                                </button>
+                                {{end}}
+                            </div>
+                        </div>
+                        {{end}}
+                    </div>
+                    {{else}}
+                    <p class="text-gray-500 dark:text-gray-400 text-center">No members selected</p>
+                    {{end}}
+                </div>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                    Uncheck items to remove them from the group. Order matters - drag or use arrows to reorder.
+                </p>
+            </div>
+
+            <!-- Available Outbounds -->
+            {{if .AvailableOutbounds}}
+            <div class="mb-6">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
+                    Available Outbounds ({{len .AvailableOutbounds}})
+                </h3>
+                <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 max-h-60 overflow-y-auto">
+                    <div class="grid grid-cols-2 gap-2">
+                        {{range .AvailableOutbounds}}
+                        <div class="flex items-center bg-white dark:bg-gray-800 p-2 rounded shadow-sm">
+                            <input type="checkbox" name="members[]" value="{{.}}"
+                                   class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600">
+                            <label class="ml-2 text-sm text-gray-700 dark:text-gray-300">{{.}}</label>
+                        </div>
+                        {{end}}
+                    </div>
+                </div>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                    Check items to add them to the group.
+                </p>
+            </div>
+            {{end}}
+
+            <!-- Additional Settings for URLTest -->
+            {{if eq $type "urltest"}}
+            <div class="mb-6 bg-blue-50 dark:bg-blue-900 dark:bg-opacity-20 rounded-lg p-4">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
+                    URLTest Settings
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Test URL
+                        </label>
+                        <input type="text" name="url" value="{{if index $outbound "url"}}{{index $outbound "url"}}{{else}}https://www.gstatic.com/generate_204{{end}}"
+                               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">URL to test connectivity</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Interval (seconds)
+                        </label>
+                        <input type="number" name="interval" value="{{if index $outbound "interval"}}{{index $outbound "interval"}}{{else}}180{{end}}"
+                               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Test frequency</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Tolerance (ms)
+                        </label>
+                        <input type="number" name="tolerance" value="{{if index $outbound "tolerance"}}{{index $outbound "tolerance"}}{{else}}50{{end}}"
+                               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Acceptable delay difference</p>
+                    </div>
+                </div>
+            </div>
+            {{end}}
+
+            <!-- Default Selection for Selector -->
+            {{if eq $type "selector"}}
+            <div class="mb-6 bg-purple-50 dark:bg-purple-900 dark:bg-opacity-20 rounded-lg p-4">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
+                    Selector Settings
+                </h3>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Default Outbound
+                    </label>
+                    <select name="default"
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                        <option value="">-- Use first --</option>
+                        {{range .GroupMembers}}
+                        <option value="{{.}}" {{if eq . (index $outbound "default")}}selected{{end}}>{{.}}</option>
+                        {{end}}
+                    </select>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Default outbound to use</p>
+                </div>
+            </div>
+            {{end}}
+
+            <!-- Form Actions -->
+            <div class="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <button type="button" onclick="closeGroupModal()"
+                        class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-6 rounded">
+                    Cancel
+                </button>
+                <button type="submit"
+                        class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded">
+                    Update Group
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function closeGroupModal() {
+    document.getElementById('group-modal').remove();
+}
+
+function closeOnBackdropClick(event) {
+    if (event.target.id === 'group-modal') {
+        closeGroupModal();
+    }
+}
+
+function validateGroupForm(event) {
+    const form = event.target;
+    const checkedBoxes = form.querySelectorAll('input[name="members[]"]:checked');
+
+    if (checkedBoxes.length === 0) {
+        alert('At least one member must be selected');
+        return false;
+    }
+
+    // Close modal on successful submission
+    setTimeout(() => closeGroupModal(), 100);
+
+    return true;
+}
+
+function moveUp(button, index) {
+    const container = document.getElementById('current-members');
+    const items = Array.from(container.children);
+    if (index > 0) {
+        const current = items[index];
+        const previous = items[index - 1];
+        container.insertBefore(current, previous);
+        updateCheckboxOrder();
+    }
+}
+
+function moveDown(button, index) {
+    const container = document.getElementById('current-members');
+    const items = Array.from(container.children);
+    if (index < items.length - 1) {
+        const current = items[index];
+        const next = items[index + 1];
+        container.insertBefore(next, current);
+        updateCheckboxOrder();
+    }
+}
+
+function updateCheckboxOrder() {
+    // Update the visual order of items
+    const container = document.getElementById('current-members');
+    const items = Array.from(container.children);
+    items.forEach((item, i) => {
+        const label = item.querySelector('.text-gray-700, .text-gray-300');
+        if (label) {
+            const text = label.textContent;
+            const match = text.match(/\d+\.\s*(.+)/);
+            if (match) {
+                label.textContent = `${i + 1}. ${match[1]}`;
+            }
+        }
+    });
+}
+
+// Listen for successful update
+document.body.addEventListener('htmx:afterSwap', function(event) {
+    if (event.detail.target.id === 'outbounds-list') {
+        closeGroupModal();
+    }
+});
+
+// Close modal on Escape key
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        closeGroupModal();
+    }
+});
+</script>
+
+<style>
+#group-modal {
+    animation: fadeIn 0.2s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+#group-modal > div {
+    animation: slideIn 0.2s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateY(-20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+</style>
+{{end}}

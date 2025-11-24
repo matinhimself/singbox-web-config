@@ -1,0 +1,309 @@
+{{define "outbound-form.html"}}
+<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" id="outbound-modal" onclick="closeOnBackdropClick(event)">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                {{if .EditMode}}Edit{{else}}Add{{end}} Outbound
+            </h2>
+            <button onclick="closeModal()" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+
+        <form {{if .EditMode}}hx-post="/api/outbounds/update"{{else}}hx-post="/api/outbounds/create"{{end}}
+              hx-target="#outbounds-list"
+              hx-swap="innerHTML"
+              onsubmit="return validateForm(event)">
+
+            {{if .EditMode}}
+            <input type="hidden" name="index" value="{{.OutboundIndex}}">
+            {{end}}
+
+            <!-- Outbound Type Selection -->
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Outbound Type *
+                </label>
+                <select name="type" id="outbound-type"
+                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                        onchange="changeOutboundType(this.value)"
+                        {{if .EditMode}}disabled{{end}}
+                        required>
+                    {{range .OutboundTypes}}
+                    <option value="{{.value}}" {{if eq $.OutboundType .value}}selected{{end}}>
+                        {{.label}} - {{.description}}
+                    </option>
+                    {{end}}
+                </select>
+                {{if .EditMode}}
+                <input type="hidden" name="type" value="{{.OutboundType}}">
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Type cannot be changed when editing</p>
+                {{end}}
+            </div>
+
+            <!-- Dynamic Fields -->
+            <div id="form-fields" class="space-y-4">
+                {{range .Fields}}
+                <div class="field-group">
+                    {{if eq .Type "hidden"}}
+                        <input type="hidden" name="{{.Name}}" value="{{if .Value}}{{.Value}}{{end}}">
+                    {{else}}
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            {{.Label}}
+                            {{if .Required}}<span class="text-red-500">*</span>{{end}}
+                        </label>
+
+                        {{if .Description}}
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">{{.Description}}</p>
+                        {{end}}
+
+                        {{if eq .Type "text"}}
+                            <input type="text" name="{{.Name}}"
+                                   value="{{if .Value}}{{.Value}}{{end}}"
+                                   placeholder="{{.Placeholder}}"
+                                   {{if .Required}}required{{end}}
+                                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+
+                        {{else if eq .Type "password"}}
+                            <input type="password" name="{{.Name}}"
+                                   value="{{if .Value}}{{.Value}}{{end}}"
+                                   placeholder="{{.Placeholder}}"
+                                   {{if .Required}}required{{end}}
+                                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+
+                        {{else if eq .Type "number"}}
+                            <input type="number" name="{{.Name}}"
+                                   value="{{if .Value}}{{.Value}}{{end}}"
+                                   placeholder="{{.Placeholder}}"
+                                   {{if .Required}}required{{end}}
+                                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+
+                        {{else if eq .Type "textarea"}}
+                            <textarea name="{{.Name}}"
+                                      rows="4"
+                                      placeholder="{{.Placeholder}}"
+                                      {{if .Required}}required{{end}}
+                                      class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">{{if .Value}}{{.Value}}{{end}}</textarea>
+
+                        {{else if eq .Type "checkbox"}}
+                            <div class="flex items-center">
+                                <input type="checkbox" name="{{.Name}}" value="true"
+                                       {{if .Value}}checked{{end}}
+                                       class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600">
+                                <label class="ml-2 text-sm text-gray-700 dark:text-gray-300">Enable</label>
+                            </div>
+
+                        {{else if eq .Type "select"}}
+                            <select name="{{.Name}}"
+                                    {{if .Required}}required{{end}}
+                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                                <option value="">-- Select --</option>
+                                {{range .Options}}
+                                <option value="{{.}}" {{if eq $.Value .}}selected{{end}}>{{.}}</option>
+                                {{end}}
+                            </select>
+
+                        {{else if eq .Type "multiselect"}}
+                            <div class="border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 p-3 max-h-48 overflow-y-auto">
+                                {{range .Options}}
+                                <div class="flex items-center mb-2">
+                                    <input type="checkbox" name="{{$.Name}}" value="{{.}}"
+                                           {{if has . $.Values}}checked{{end}}
+                                           class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600">
+                                    <label class="ml-2 text-sm text-gray-700 dark:text-gray-300">{{.}}</label>
+                                </div>
+                                {{end}}
+                            </div>
+
+                        {{else if eq .Type "array"}}
+                            <div class="space-y-2" id="array-{{.Name}}">
+                                {{if .Values}}
+                                    {{range $i, $v := .Values}}
+                                    <div class="flex items-center space-x-2">
+                                        <input type="text" name="{{$.Name}}" value="{{$v}}"
+                                               placeholder="{{$.Placeholder}}"
+                                               {{if $.Required}}required{{end}}
+                                               class="flex-grow px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                                        <button type="button" onclick="removeArrayItem(this)"
+                                                class="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded">
+                                            Remove
+                                        </button>
+                                    </div>
+                                    {{end}}
+                                {{else}}
+                                    <div class="flex items-center space-x-2">
+                                        <input type="text" name="{{.Name}}"
+                                               placeholder="{{.Placeholder}}"
+                                               {{if .Required}}required{{end}}
+                                               class="flex-grow px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                                        <button type="button" onclick="removeArrayItem(this)"
+                                                class="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded">
+                                            Remove
+                                        </button>
+                                    </div>
+                                {{end}}
+                            </div>
+                            <button type="button" onclick="addArrayItem('array-{{.Name}}', '{{.Name}}', '{{.Placeholder}}')"
+                                    class="mt-2 bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded text-sm">
+                                + Add {{.Label}}
+                            </button>
+                        {{end}}
+                    {{end}}
+                </div>
+                {{end}}
+            </div>
+
+            <!-- Form Actions -->
+            <div class="flex justify-end space-x-3 mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <button type="button" onclick="closeModal()"
+                        class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-6 rounded">
+                    Cancel
+                </button>
+                <button type="submit"
+                        class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded">
+                    {{if .EditMode}}Update{{else}}Create{{end}} Outbound
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function closeModal() {
+    document.getElementById('outbound-modal').remove();
+}
+
+function closeOnBackdropClick(event) {
+    if (event.target.id === 'outbound-modal') {
+        closeModal();
+    }
+}
+
+function changeOutboundType(type) {
+    // Reload form with new type
+    const url = `/api/outbounds/form?type=${type}`;
+    htmx.ajax('GET', url, {target: 'body', swap: 'beforeend'})
+        .then(() => closeModal());
+}
+
+function addArrayItem(containerId, fieldName, placeholder) {
+    const container = document.getElementById(containerId);
+    const div = document.createElement('div');
+    div.className = 'flex items-center space-x-2';
+    div.innerHTML = `
+        <input type="text" name="${fieldName}"
+               placeholder="${placeholder}"
+               class="flex-grow px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+        <button type="button" onclick="removeArrayItem(this)"
+                class="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded">
+            Remove
+        </button>
+    `;
+    container.appendChild(div);
+}
+
+function removeArrayItem(button) {
+    const container = button.parentElement.parentElement;
+    const items = container.querySelectorAll('.flex.items-center.space-x-2');
+    if (items.length > 1) {
+        button.parentElement.remove();
+    } else {
+        alert('At least one item is required');
+    }
+}
+
+function validateForm(event) {
+    const form = event.target;
+    const tag = form.querySelector('input[name="tag"]');
+    const type = form.querySelector('input[name="type"], select[name="type"]');
+
+    if (!tag || !tag.value.trim()) {
+        alert('Tag is required');
+        return false;
+    }
+
+    if (!type || !type.value) {
+        alert('Type is required');
+        return false;
+    }
+
+    // Type-specific validation
+    const typeValue = type.value;
+    const requiresServer = ['socks', 'http', 'shadowsocks', 'vmess', 'vless', 'trojan', 'wireguard', 'hysteria', 'hysteria2', 'tuic', 'ssh'];
+
+    if (requiresServer.includes(typeValue)) {
+        const server = form.querySelector('input[name="server"]');
+        const serverPort = form.querySelector('input[name="server_port"]');
+
+        if (!server || !server.value.trim()) {
+            alert('Server is required for this outbound type');
+            return false;
+        }
+
+        if (!serverPort || !serverPort.value) {
+            alert('Server port is required for this outbound type');
+            return false;
+        }
+    }
+
+    if (typeValue === 'selector' || typeValue === 'urltest') {
+        const outbounds = form.querySelectorAll('input[name="outbounds[]"]:checked');
+        if (outbounds.length === 0) {
+            alert('At least one outbound must be selected for group types');
+            return false;
+        }
+    }
+
+    // Close modal on successful submission
+    setTimeout(() => closeModal(), 100);
+
+    return true;
+}
+
+// Listen for successful creation/update
+document.body.addEventListener('htmx:afterSwap', function(event) {
+    if (event.detail.target.id === 'outbounds-list') {
+        closeModal();
+    }
+});
+
+// Close modal on Escape key
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        closeModal();
+    }
+});
+</script>
+
+<style>
+#outbound-modal {
+    animation: fadeIn 0.2s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+#outbound-modal > div {
+    animation: slideIn 0.2s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateY(-20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+</style>
+{{end}}

@@ -1,0 +1,41 @@
+{{define "outbounds.html"}}
+<!DOCTYPE html>
+<html lang="en" class="dark">
+{{template "head" .}}
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+    {{template "navbar"}}
+
+    <main class="container mx-auto px-4 py-8">
+        <div class="flex justify-between items-center mb-8">
+            <div>
+                <h1 class="text-3xl font-bold">Outbound Management</h1>
+                <p class="text-gray-600 dark:text-gray-400">Manage your sing-box outbound connections and groups</p>
+            </div>
+            <div class="flex space-x-2">
+                <button class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded"
+                        hx-get="/api/outbounds/form"
+                        hx-target="body"
+                        hx-swap="beforeend">
+                    + Add Outbound
+                </button>
+                <a href="/api/config/export" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded" download>Export</a>
+                <a href="/service" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded">Manage Service</a>
+            </div>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+            <h2 class="text-2xl font-bold mb-4">Your Outbounds</h2>
+            <div id="outbounds-list" hx-get="/api/outbounds" hx-trigger="load">
+                <!-- Outbounds will be loaded here via HTMX -->
+                <div class="text-center text-gray-500">
+                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gray-300 border-t-blue-500 mb-2"></div>
+                    <p>Loading outbounds...</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    {{template "footer"}}
+</body>
+</html>
+{{end}}

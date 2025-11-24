@@ -1,0 +1,221 @@
+{{define "outbound-list.html"}}
+{{if .Outbounds}}
+<div class="space-y-4" id="outbounds-container">
+    {{range $index, $outbound := .Outbounds}}
+    {{$type := index $outbound "type"}}
+    {{$tag := index $outbound "tag"}}
+    {{$server := index $outbound "server"}}
+    <div class="bg-gray-50 dark:bg-gray-700 rounded-lg shadow-sm p-4 flex items-start justify-between outbound-card hover:shadow-md transition-shadow"
+         id="outbound-{{$index}}" draggable="true" data-index="{{$index}}"
+         ondragstart="handleDragStart(event)"
+         ondragover="handleDragOver(event)"
+         ondrop="handleDrop(event)"
+         ondragend="handleDragEnd(event)"
+         ondragenter="handleDragEnter(event)"
+         ondragleave="handleDragLeave(event)">
+
+        <div class="flex items-start flex-grow">
+            <span class="drag-handle cursor-move text-gray-500 dark:text-gray-400 mr-4 mt-1 text-xl">☰</span>
+
+            <div class="flex-grow">
+                <div class="flex items-center mb-2">
+                    <span class="font-bold text-lg text-gray-800 dark:text-gray-200 mr-2">#{{add $index 1}}</span>
+                    {{if eq $type "direct"}}
+                        <span class="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs font-semibold px-2 py-1 rounded">Direct</span>
+                    {{else if eq $type "block"}}
+                        <span class="bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 text-xs font-semibold px-2 py-1 rounded">Block</span>
+                    {{else if eq $type "dns"}}
+                        <span class="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs font-semibold px-2 py-1 rounded">DNS</span>
+                    {{else if eq $type "selector"}}
+                        <span class="bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 text-xs font-semibold px-2 py-1 rounded">Selector</span>
+                    {{else if eq $type "urltest"}}
+                        <span class="bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 text-xs font-semibold px-2 py-1 rounded">URLTest</span>
+                    {{else}}
+                        <span class="bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 text-xs font-semibold px-2 py-1 rounded uppercase">{{$type}}</span>
+                    {{end}}
+                    <span class="ml-2 text-lg font-semibold text-gray-700 dark:text-gray-300">{{$tag}}</span>
+                </div>
+
+                <div class="bg-gray-100 dark:bg-gray-800 p-3 rounded-md">
+                    {{if $server}}
+                        <div class="text-sm text-gray-700 dark:text-gray-300 mb-1">
+                            <span class="font-medium">Server:</span> {{$server}}
+                            {{if index $outbound "server_port"}}:{{index $outbound "server_port"}}{{end}}
+                        </div>
+                    {{end}}
+
+                    {{if eq $type "selector"}}
+                        {{$outbounds := index $outbound "outbounds"}}
+                        <div class="text-sm text-gray-700 dark:text-gray-300">
+                            <span class="font-medium">Members ({{len $outbounds}}):</span>
+                            <span class="text-xs">{{range $i, $ob := $outbounds}}{{if $i}}, {{end}}{{$ob}}{{end}}</span>
+                        </div>
+                    {{else if eq $type "urltest"}}
+                        {{$outbounds := index $outbound "outbounds"}}
+                        <div class="text-sm text-gray-700 dark:text-gray-300">
+                            <span class="font-medium">Testing ({{len $outbounds}}):</span>
+                            <span class="text-xs">{{range $i, $ob := $outbounds}}{{if $i}}, {{end}}{{$ob}}{{end}}</span>
+                        </div>
+                    {{end}}
+
+                    <details class="mt-2">
+                        <summary class="text-xs text-gray-500 dark:text-gray-400 cursor-pointer hover:text-gray-700 dark:hover:text-gray-300">Show JSON</summary>
+                        <pre class="mt-2 text-xs text-gray-800 dark:text-gray-200 overflow-x-auto">{{marshal $outbound}}</pre>
+                    </details>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex flex-col space-y-2 ml-4">
+            {{if or (eq $type "selector") (eq $type "urltest")}}
+            <button class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-1 px-3 rounded text-sm whitespace-nowrap"
+                    hx-get="/api/outbounds/group/manage?index={{$index}}"
+                    hx-target="body"
+                    hx-swap="beforeend"
+                    title="Manage group members">
+                Manage Group
+            </button>
+            {{end}}
+            <button class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-1 px-3 rounded text-sm"
+                    hx-get="/api/outbounds/form?index={{$index}}"
+                    hx-target="body"
+                    hx-swap="beforeend"
+                    title="Edit outbound">
+                Edit
+            </button>
+            <button class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-1 px-3 rounded text-sm"
+                    onclick="showRenameModal({{$index}}, '{{$tag}}')"
+                    title="Rename outbound">
+                Rename
+            </button>
+            <button class="bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-3 rounded text-sm"
+                    hx-post="/api/outbounds/delete?index={{$index}}"
+                    hx-target="#outbounds-list"
+                    hx-swap="innerHTML"
+                    hx-confirm="Are you sure you want to delete the '{{$tag}}' outbound? This cannot be undone."
+                    title="Delete outbound">
+                Delete
+            </button>
+        </div>
+    </div>
+    {{end}}
+</div>
+
+<style>
+.dragging {
+    opacity: 0.5;
+    background-color: #e2e8f0;
+}
+.drag-over {
+    border: 2px dashed #60a5fa;
+}
+</style>
+
+<script>
+let draggedElement = null;
+let draggedIndex = null;
+
+function handleDragStart(e) {
+    draggedElement = e.target.closest('.outbound-card');
+    draggedIndex = parseInt(draggedElement.dataset.index);
+    draggedElement.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', draggedIndex);
+}
+
+function handleDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+}
+
+function handleDragEnter(e) {
+    const dropTarget = e.target.closest('.outbound-card');
+    if (dropTarget && dropTarget !== draggedElement) {
+        dropTarget.classList.add('drag-over');
+    }
+}
+
+function handleDragLeave(e) {
+    const dropTarget = e.target.closest('.outbound-card');
+    if (dropTarget) {
+        dropTarget.classList.remove('drag-over');
+    }
+}
+
+function handleDrop(e) {
+    e.preventDefault();
+    const dropTarget = e.target.closest('.outbound-card');
+    if (draggedElement && dropTarget && draggedElement !== dropTarget) {
+        const dropIndex = parseInt(dropTarget.dataset.index);
+
+        fetch('/api/outbounds/reorder?from=' + draggedIndex + '&to=' + dropIndex, {
+            method: 'POST'
+        })
+        .then(response => {
+            if (response.ok) {
+                // Reload the outbounds list
+                htmx.ajax('GET', '/api/outbounds', {target: '#outbounds-list', swap: 'innerHTML'});
+            } else {
+                return Promise.reject('Failed to reorder');
+            }
+        })
+        .catch(error => {
+            console.error('Error reordering outbounds:', error);
+            alert('Failed to reorder outbounds. Please try again.');
+        });
+    }
+    if (dropTarget) {
+        dropTarget.classList.remove('drag-over');
+    }
+}
+
+function handleDragEnd(e) {
+    if(draggedElement) {
+        draggedElement.classList.remove('dragging');
+    }
+    document.querySelectorAll('.outbound-card').forEach(card => {
+        card.classList.remove('drag-over');
+    });
+    draggedElement = null;
+    draggedIndex = null;
+}
+
+function showRenameModal(index, oldTag) {
+    const newTag = prompt(`Rename outbound "${oldTag}" to:`, oldTag);
+    if (newTag && newTag !== oldTag) {
+        const formData = new FormData();
+        formData.append('old_tag', oldTag);
+        formData.append('new_tag', newTag);
+
+        fetch('/api/outbounds/rename', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            if (response.ok) {
+                return response.text();
+            } else {
+                return response.text().then(text => Promise.reject(text));
+            }
+        })
+        .then(html => {
+            document.getElementById('outbounds-list').innerHTML = html;
+        })
+        .catch(error => {
+            console.error('Error renaming outbound:', error);
+            alert('Failed to rename outbound: ' + error);
+        });
+    }
+}
+</script>
+
+{{else}}
+<div class="text-center py-12">
+    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+    </svg>
+    <p class="mt-4 text-gray-500 dark:text-gray-400 text-lg">No outbounds configured yet.</p>
+    <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Click "Add Outbound" to create your first outbound connection.</p>
+</div>
+{{end}}
+{{end}}

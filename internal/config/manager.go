@@ -281,3 +281,96 @@ func (m *Manager) RestoreBackup(backupName string) error {
 
 	return nil
 }
+
+// UpdateOutbounds updates the outbounds in the config
+func (m *Manager) UpdateOutbounds(outbounds []interface{}) error {
+	// Load current config
+	config, err := m.LoadConfig()
+	if err != nil {
+		return err
+	}
+
+	// Update outbounds
+	config.Outbounds = outbounds
+
+	// Save config
+	return m.SaveConfig(config)
+}
+
+// GetOutbounds returns the current outbounds
+func (m *Manager) GetOutbounds() ([]interface{}, error) {
+	config, err := m.LoadConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	if config.Outbounds == nil {
+		return []interface{}{}, nil
+	}
+
+	return config.Outbounds, nil
+}
+
+// GetOutboundTags returns a list of all outbound tags
+func (m *Manager) GetOutboundTags() ([]string, error) {
+	outbounds, err := m.GetOutbounds()
+	if err != nil {
+		return nil, err
+	}
+
+	var tags []string
+	for _, outbound := range outbounds {
+		if outboundMap, ok := outbound.(map[string]interface{}); ok {
+			if tag, ok := outboundMap["tag"].(string); ok {
+				tags = append(tags, tag)
+			}
+		}
+	}
+
+	return tags, nil
+}
+
+// RenameOutbound renames an outbound and updates all references to it
+func (m *Manager) RenameOutbound(oldTag, newTag string) error {
+	config, err := m.LoadConfig()
+	if err != nil {
+		return err
+	}
+
+	// Update outbound tag
+	for _, outbound := range config.Outbounds {
+		if outboundMap, ok := outbound.(map[string]interface{}); ok {
+			if tag, ok := outboundMap["tag"].(string); ok && tag == oldTag {
+				outboundMap["tag"] = newTag
+			}
+
+			// Update references in selector/urltest outbounds
+			if outbounds, ok := outboundMap["outbounds"].([]interface{}); ok {
+				for i, ob := range outbounds {
+					if obTag, ok := ob.(string); ok && obTag == oldTag {
+						outbounds[i] = newTag
+					}
+				}
+			}
+		}
+	}
+
+	// Update references in route rules
+	if config.Route != nil && config.Route.Rules != nil {
+		for _, rule := range config.Route.Rules {
+			if ruleMap, ok := rule.(map[string]interface{}); ok {
+				// Update outbound field
+				if outbound, ok := ruleMap["outbound"].(string); ok && outbound == oldTag {
+					ruleMap["outbound"] = newTag
+				}
+			}
+		}
+
+		// Update final outbound
+		if config.Route.Final == oldTag {
+			config.Route.Final = newTag
+		}
+	}
+
+	return m.SaveConfig(config)
+}
