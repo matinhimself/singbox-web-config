@@ -344,10 +344,8 @@ class ConnectionsManager {
             if (!cb.disabled) cb.checked = false;
         });
 
-        // Reset action and outbound
-        document.getElementById('rule-action').value = '';
+        // Reset outbound
         document.getElementById('rule-outbound').value = '';
-        document.getElementById('rule-outbound-group').style.display = 'none';
 
         // Add event listeners for preview updates
         document.querySelectorAll('.rule-checkbox').forEach(cb => {
@@ -367,12 +365,6 @@ class ConnectionsManager {
 
         const rule = {};
         const conn = this.selectedConnection;
-
-        // Add action field
-        const action = document.getElementById('rule-action').value;
-        if (action) {
-            rule.action = action;
-        }
 
         // Add matching fields
         if (document.getElementById('rule-source-ip').checked) {
@@ -395,9 +387,9 @@ class ConnectionsManager {
             rule.domain_suffix = [conn.metadata.host];
         }
 
-        // Add outbound for 'route' action
+        // Add outbound if provided
         const outbound = document.getElementById('rule-outbound').value;
-        if (outbound && (action === 'route' || action === 'route-options')) {
+        if (outbound) {
             rule.outbound = outbound;
         }
 
@@ -488,17 +480,8 @@ function closeRuleModal() {
 }
 
 function updateRuleActionFields() {
-    const action = document.getElementById('rule-action').value;
-    const outboundGroup = document.getElementById('rule-outbound-group');
-
-    // Show outbound selector only for 'route' and 'route-options' actions
-    if (action === 'route' || action === 'route-options') {
-        outboundGroup.style.display = 'block';
-    } else {
-        outboundGroup.style.display = 'none';
-    }
-
-    // Update preview
+    // This function is no longer needed but kept for compatibility
+    // Update preview when outbound changes
     if (connectionsManager) {
         connectionsManager.updateRulePreview();
     }
@@ -509,14 +492,6 @@ async function createRuleFromConnection() {
 
     const conn = connectionsManager.selectedConnection;
     const formData = new FormData();
-
-    // Validate action
-    const action = document.getElementById('rule-action').value;
-    if (!action) {
-        alert('Please select an action');
-        return;
-    }
-    formData.append('action', action);
 
     // Add matching fields
     if (document.getElementById('rule-source-ip').checked) {
@@ -539,13 +514,9 @@ async function createRuleFromConnection() {
         formData.append('domain', conn.metadata.host);
     }
 
-    // Validate and add outbound for actions that need it
+    // Add outbound if provided
     const outbound = document.getElementById('rule-outbound').value;
-    if (action === 'route' || action === 'route-options') {
-        if (!outbound) {
-            alert('Please select an outbound for ' + action + ' action');
-            return;
-        }
+    if (outbound) {
         formData.append('outbound', outbound);
     }
 
