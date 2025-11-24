@@ -38,5 +38,6 @@ build/
 
 # Built binaries
 singbox-web-config
+singbox-web-config-server
 singbox-web-config-test
 singbox-generator
