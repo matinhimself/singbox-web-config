@@ -31,7 +31,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
                         <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Clash API URL</p>
-                        <p class="mt-1 text-lg font-semibold font-mono">{{.Data.ClashURL}}</p>
+                        <p class="mt-1 text-lg font-semibold font-mono" id="current-clash-url">{{.Data.ClashURL}}</p>
                     </div>
                     <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
                         <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Authentication</p>
@@ -39,16 +39,273 @@
                     </div>
                 </div>
                 <div class="bg-blue-100 dark:bg-blue-900 border-l-4 border-blue-500 text-blue-700 dark:text-blue-300 p-4 rounded-md">
-                    <p class="font-bold">Note</p>
-                    <p>Clash API settings are configured via command-line arguments. Restart the server to change the configuration.</p>
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="font-bold">Configuration Active</p>
+                            <p>Clash API is configured and connected. You can update the configuration below if needed.</p>
+                        </div>
+                        <button id="toggle-edit-btn"
+                                class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition">
+                            Edit Configuration
+                        </button>
+                    </div>
                 </div>
+
+                <!-- Edit Configuration Form (Hidden by default) -->
+                <div id="edit-config-section" class="hidden mt-4">
+                    <hr class="my-4 border-gray-300 dark:border-gray-600">
+                    <h3 class="text-xl font-bold mb-4">Update Clash Configuration</h3>
+                    <form id="clash-config-form-edit" class="space-y-4">
+                        <div id="config-error-edit" class="hidden bg-red-100 dark:bg-red-900 border-l-4 border-red-500 text-red-700 dark:text-red-300 p-4 rounded-md">
+                            <p class="font-bold">Error</p>
+                            <p id="config-error-message-edit"></p>
+                        </div>
+                        <div id="config-success-edit" class="hidden bg-green-100 dark:bg-green-900 border-l-4 border-green-500 text-green-700 dark:text-green-300 p-4 rounded-md">
+                            <p class="font-bold">Success</p>
+                            <p id="config-success-message-edit"></p>
+                        </div>
+
+                        <div>
+                            <label for="clash-url-edit" class="block text-sm font-medium mb-2">
+                                Clash API URL
+                            </label>
+                            <input type="text"
+                                   id="clash-url-edit"
+                                   name="url"
+                                   placeholder="http://127.0.0.1:9090"
+                                   value="{{.Data.ClashURL}}"
+                                   class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+                                   required>
+                        </div>
+
+                        <div>
+                            <label for="clash-secret-edit" class="block text-sm font-medium mb-2">
+                                Secret (Optional)
+                            </label>
+                            <input type="password"
+                                   id="clash-secret-edit"
+                                   name="secret"
+                                   placeholder="Leave empty if no authentication"
+                                   class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500">
+                        </div>
+
+                        <div class="flex gap-3">
+                            <button type="button"
+                                    id="test-connection-btn-edit"
+                                    class="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition">
+                                Test Connection
+                            </button>
+                            <button type="submit"
+                                    class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition">
+                                Update Configuration
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <script>
+                    // Toggle edit section
+                    document.getElementById('toggle-edit-btn').addEventListener('click', function() {
+                        const editSection = document.getElementById('edit-config-section');
+                        editSection.classList.toggle('hidden');
+                        this.textContent = editSection.classList.contains('hidden') ? 'Edit Configuration' : 'Cancel Edit';
+                    });
+
+                    // Test connection (edit form)
+                    document.getElementById('test-connection-btn-edit').addEventListener('click', async function() {
+                        const url = document.getElementById('clash-url-edit').value;
+                        const secret = document.getElementById('clash-secret-edit').value;
+                        const errorDiv = document.getElementById('config-error-edit');
+                        const successDiv = document.getElementById('config-success-edit');
+
+                        errorDiv.classList.add('hidden');
+                        successDiv.classList.add('hidden');
+
+                        try {
+                            const response = await fetch('/api/clash/test', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ url, secret })
+                            });
+
+                            const data = await response.json();
+
+                            if (data.success) {
+                                successDiv.classList.remove('hidden');
+                                document.getElementById('config-success-message-edit').textContent = data.message;
+                            } else {
+                                errorDiv.classList.remove('hidden');
+                                document.getElementById('config-error-message-edit').textContent = data.message;
+                            }
+                        } catch (error) {
+                            errorDiv.classList.remove('hidden');
+                            document.getElementById('config-error-message-edit').textContent = 'Failed to test connection: ' + error.message;
+                        }
+                    });
+
+                    // Save configuration (edit form)
+                    document.getElementById('clash-config-form-edit').addEventListener('submit', async function(e) {
+                        e.preventDefault();
+
+                        const url = document.getElementById('clash-url-edit').value;
+                        const secret = document.getElementById('clash-secret-edit').value;
+                        const errorDiv = document.getElementById('config-error-edit');
+                        const successDiv = document.getElementById('config-success-edit');
+
+                        errorDiv.classList.add('hidden');
+                        successDiv.classList.add('hidden');
+
+                        try {
+                            const response = await fetch('/api/clash/update', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ url, secret })
+                            });
+
+                            const data = await response.json();
+
+                            if (data.success) {
+                                successDiv.classList.remove('hidden');
+                                document.getElementById('config-success-message-edit').textContent = data.message + ' Reloading page...';
+                                setTimeout(() => window.location.reload(), 1500);
+                            } else {
+                                errorDiv.classList.remove('hidden');
+                                document.getElementById('config-error-message-edit').textContent = data.message;
+                            }
+                        } catch (error) {
+                            errorDiv.classList.remove('hidden');
+                            document.getElementById('config-error-message-edit').textContent = 'Failed to save configuration: ' + error.message;
+                        }
+                    });
+                </script>
                 {{else}}
-                <div class="bg-yellow-100 dark:bg-yellow-900 border-l-4 border-yellow-500 text-yellow-700 dark:text-yellow-300 p-4 rounded-md">
+                <div class="bg-yellow-100 dark:bg-yellow-900 border-l-4 border-yellow-500 text-yellow-700 dark:text-yellow-300 p-4 rounded-md mb-4">
                     <p class="font-bold">Clash API Not Configured</p>
-                    <p>To enable proxy management, start the server with the <code>-clash</code> flag:</p>
-                    <pre class="mt-2 p-2 bg-yellow-50 dark:bg-yellow-800 rounded-md overflow-x-auto"><code>singbox-web-config -clash http://127.0.0.1:9090</code></pre>
-                    <p class="mt-2">Optional: Add <code>-clash-secret your-secret</code> if authentication is required.</p>
+                    <p>The Clash API was not auto-detected. Configure it below or start the server with the <code>-clash</code> flag.</p>
                 </div>
+
+                <!-- Configuration Form -->
+                <form id="clash-config-form" class="space-y-4">
+                    <div id="config-error" class="hidden bg-red-100 dark:bg-red-900 border-l-4 border-red-500 text-red-700 dark:text-red-300 p-4 rounded-md">
+                        <p class="font-bold">Error</p>
+                        <p id="config-error-message"></p>
+                    </div>
+                    <div id="config-success" class="hidden bg-green-100 dark:bg-green-900 border-l-4 border-green-500 text-green-700 dark:text-green-300 p-4 rounded-md">
+                        <p class="font-bold">Success</p>
+                        <p id="config-success-message"></p>
+                    </div>
+
+                    <div>
+                        <label for="clash-url" class="block text-sm font-medium mb-2">
+                            Clash API URL
+                        </label>
+                        <input type="text"
+                               id="clash-url"
+                               name="url"
+                               placeholder="http://127.0.0.1:9090"
+                               value="http://127.0.0.1:9090"
+                               class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+                               required>
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                            Enter the URL of your Clash API (e.g., http://127.0.0.1:9090)
+                        </p>
+                    </div>
+
+                    <div>
+                        <label for="clash-secret" class="block text-sm font-medium mb-2">
+                            Secret (Optional)
+                        </label>
+                        <input type="password"
+                               id="clash-secret"
+                               name="secret"
+                               placeholder="Leave empty if no authentication"
+                               class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500">
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                            Optional authentication secret for your Clash API
+                        </p>
+                    </div>
+
+                    <div class="flex gap-3">
+                        <button type="button"
+                                id="test-connection-btn"
+                                class="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition">
+                            Test Connection
+                        </button>
+                        <button type="submit"
+                                class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition">
+                            Save Configuration
+                        </button>
+                    </div>
+                </form>
+
+                <script>
+                    // Test connection
+                    document.getElementById('test-connection-btn').addEventListener('click', async function() {
+                        const url = document.getElementById('clash-url').value;
+                        const secret = document.getElementById('clash-secret').value;
+                        const errorDiv = document.getElementById('config-error');
+                        const successDiv = document.getElementById('config-success');
+
+                        errorDiv.classList.add('hidden');
+                        successDiv.classList.add('hidden');
+
+                        try {
+                            const response = await fetch('/api/clash/test', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ url, secret })
+                            });
+
+                            const data = await response.json();
+
+                            if (data.success) {
+                                successDiv.classList.remove('hidden');
+                                document.getElementById('config-success-message').textContent = data.message;
+                            } else {
+                                errorDiv.classList.remove('hidden');
+                                document.getElementById('config-error-message').textContent = data.message;
+                            }
+                        } catch (error) {
+                            errorDiv.classList.remove('hidden');
+                            document.getElementById('config-error-message').textContent = 'Failed to test connection: ' + error.message;
+                        }
+                    });
+
+                    // Save configuration
+                    document.getElementById('clash-config-form').addEventListener('submit', async function(e) {
+                        e.preventDefault();
+
+                        const url = document.getElementById('clash-url').value;
+                        const secret = document.getElementById('clash-secret').value;
+                        const errorDiv = document.getElementById('config-error');
+                        const successDiv = document.getElementById('config-success');
+
+                        errorDiv.classList.add('hidden');
+                        successDiv.classList.add('hidden');
+
+                        try {
+                            const response = await fetch('/api/clash/update', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ url, secret })
+                            });
+
+                            const data = await response.json();
+
+                            if (data.success) {
+                                successDiv.classList.remove('hidden');
+                                document.getElementById('config-success-message').textContent = data.message + ' Reloading page...';
+                                setTimeout(() => window.location.reload(), 1500);
+                            } else {
+                                errorDiv.classList.remove('hidden');
+                                document.getElementById('config-error-message').textContent = data.message;
+                            }
+                        } catch (error) {
+                            errorDiv.classList.remove('hidden');
+                            document.getElementById('config-error-message').textContent = 'Failed to save configuration: ' + error.message;
+                        }
+                    });
+                </script>
                 {{end}}
             </div>
         </div>
