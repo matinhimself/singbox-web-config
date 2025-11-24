@@ -144,7 +144,7 @@ func (s *Server) handleConnectionToRule(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if err := r.ParseForm(); err != nil {
+	if err := r.ParseMultipartForm(1 << 10); err != nil {
 		http.Error(w, "Failed to parse form", http.StatusBadRequest)
 		return
 	}
