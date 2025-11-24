@@ -157,30 +157,56 @@ func (s *Server) handleConnectionToRule(w http.ResponseWriter, r *http.Request) 
 	domain := r.FormValue("domain")
 	outbound := r.FormValue("outbound")
 
+	// Debug logging
+	log.Printf("DEBUG - Received form data:")
+	log.Printf("  source_ip: '%s'", sourceIP)
+	log.Printf("  destination_ip: '%s'", destinationIP)
+	log.Printf("  destination_port: '%s'", destinationPort)
+	log.Printf("  network: '%s'", network)
+	log.Printf("  domain: '%s'", domain)
+	log.Printf("  outbound: '%s'", outbound)
+	log.Printf("  All form values: %v", r.Form)
+
 	// Build rule from selected properties
 	rule := make(map[string]interface{})
+	hasMatchingField := false
 
 	// Add matching fields
 	if sourceIP != "" {
 		rule["source_ip_cidr"] = []string{sourceIP + "/32"}
+		hasMatchingField = true
 	}
 	if destinationIP != "" {
 		rule["ip_cidr"] = []string{destinationIP + "/32"}
+		hasMatchingField = true
 	}
 	if destinationPort != "" {
 		rule["port"] = []string{destinationPort}
+		hasMatchingField = true
 	}
 	if network != "" {
 		rule["network"] = []string{network}
+		hasMatchingField = true
 	}
 	if domain != "" {
 		rule["domain_suffix"] = []string{domain}
+		hasMatchingField = true
+	}
+
+	// Validate that at least one matching field is selected
+	if !hasMatchingField {
+		http.Error(w, "At least one matching field must be selected", http.StatusBadRequest)
+		return
 	}
 
 	// Add outbound if provided
 	if outbound != "" {
 		rule["outbound"] = outbound
 	}
+
+	// Debug: log the rule being created
+	ruleJSON, _ := json.Marshal(rule)
+	log.Printf("DEBUG - Creating rule: %s", string(ruleJSON))
 
 	// Get current rules
 	rules, err := s.configManager.GetRules()
