@@ -8,7 +8,8 @@ class ConnectionsManager {
             search: '',
             network: '',
             source: '',
-            chain: ''
+            chain: '',
+            status: 'all' // all, open, closed
         };
         this.sortBy = 'start-desc';
         this.selectedConnection = null;
@@ -45,6 +46,11 @@ class ConnectionsManager {
 
         document.getElementById('filter-chain').addEventListener('change', (e) => {
             this.filters.chain = e.target.value;
+            this.applyFiltersAndSort();
+        });
+
+        document.getElementById('filter-status').addEventListener('change', (e) => {
+            this.filters.status = e.target.value;
             this.applyFiltersAndSort();
         });
 
@@ -129,7 +135,26 @@ class ConnectionsManager {
     }
 
     handleConnectionsUpdate(data) {
-        this.connections = data.connections || [];
+        const newConnections = data.connections || [];
+        const newConnectionIds = new Set(newConnections.map(c => c.id));
+
+        // Mark existing connections as closed if they're not in the new data
+        this.connections.forEach(conn => {
+            if (!newConnectionIds.has(conn.id)) {
+                conn.status = 'closed';
+            }
+        });
+
+        // Add or update connections
+        newConnections.forEach(newConn => {
+            newConn.status = 'open';
+            const existingIndex = this.connections.findIndex(c => c.id === newConn.id);
+            if (existingIndex >= 0) {
+                this.connections[existingIndex] = newConn;
+            } else {
+                this.connections.push(newConn);
+            }
+        });
 
         // Update stats
         this.updateStats(data);
@@ -190,6 +215,13 @@ class ConnectionsManager {
     applyFiltersAndSort() {
         // Apply filters
         this.filteredConnections = this.connections.filter(conn => {
+            // Status filter
+            if (this.filters.status !== 'all') {
+                if (conn.status !== this.filters.status) {
+                    return false;
+                }
+            }
+
             // Search filter
             if (this.filters.search) {
                 const searchText = JSON.stringify(conn).toLowerCase();
@@ -268,7 +300,7 @@ class ConnectionsManager {
         if (this.filteredConnections.length === 0) {
             tbody.innerHTML = `
                 <tr class="empty-state-row">
-                    <td colspan="10">
+                    <td colspan="11">
                         <div class="empty-state">
                             <p>No connections found</p>
                         </div>
@@ -278,16 +310,75 @@ class ConnectionsManager {
             return;
         }
 
-        tbody.innerHTML = this.filteredConnections.map(conn => this.renderConnectionRow(conn)).join('');
+        // Group connections by chain
+        const grouped = this.groupConnectionsByChain(this.filteredConnections);
+
+        let html = '';
+        grouped.forEach(group => {
+            // Add group header
+            html += `
+                <tr class="chain-group-header">
+                    <td colspan="11">
+                        <div class="chain-group-label">
+                            <span class="chain-name">${this.escapeHtml(group.chain)}</span>
+                            <span class="chain-count">${group.connections.length} connection${group.connections.length !== 1 ? 's' : ''}</span>
+                        </div>
+                    </td>
+                </tr>
+            `;
+
+            // Add connections in group
+            group.connections.forEach(conn => {
+                html += this.renderConnectionRow(conn);
+            });
+        });
+
+        tbody.innerHTML = html;
+    }
+
+    groupConnectionsByChain(connections) {
+        const groups = new Map();
+
+        connections.forEach(conn => {
+            // Use the last chain (matched chain) or 'Direct' if no chains
+            const chain = (conn.chains && conn.chains.length > 0)
+                ? conn.chains[conn.chains.length - 1]
+                : 'Direct';
+
+            if (!groups.has(chain)) {
+                groups.set(chain, {
+                    chain: chain,
+                    connections: []
+                });
+            }
+
+            groups.get(chain).connections.push(conn);
+        });
+
+        // Convert to array and sort by chain name
+        return Array.from(groups.values()).sort((a, b) =>
+            a.chain.localeCompare(b.chain)
+        );
+    }
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     renderConnectionRow(conn) {
         const duration = this.formatDuration(new Date(conn.start));
         const chains = (conn.chains || []).join(' → ');
         const host = conn.metadata.host || '-';
+        const statusClass = conn.status === 'open' ? 'status-open' : 'status-closed';
+        const statusText = conn.status === 'open' ? 'Open' : 'Closed';
 
         return `
-            <tr class="connection-row" data-id="${conn.id}">
+            <tr class="connection-row ${statusClass}" data-id="${conn.id}">
+                <td>
+                    <span class="status-badge ${statusClass}">${statusText}</span>
+                </td>
                 <td>
                     <div class="connection-address">
                         ${conn.metadata.sourceIP}:${conn.metadata.sourcePort}
@@ -429,13 +520,15 @@ class ConnectionsManager {
             search: '',
             network: '',
             source: '',
-            chain: ''
+            chain: '',
+            status: 'all'
         };
 
         document.getElementById('search-input').value = '';
         document.getElementById('filter-network').value = '';
         document.getElementById('filter-source').value = '';
         document.getElementById('filter-chain').value = '';
+        document.getElementById('filter-status').value = 'all';
 
         this.applyFiltersAndSort();
     }
