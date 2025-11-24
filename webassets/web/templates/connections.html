@@ -122,17 +122,9 @@
                         <span class="font-medium">Domain: <span id="rule-domain-value" class="font-mono"></span></span>
                     </label>
                 </div>
-                <div>
-                    <label for="rule-action" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Action <span class="text-red-500">*</span></label>
-                    <select id="rule-action" required onchange="updateRuleActionFields()" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
-                        <option value="">Select action...</option>
-                        <option value="route">Route</option>
-                        <option value="reject">Reject</option>
-                    </select>
-                </div>
-                <div id="rule-outbound-group" class="hidden">
-                    <label for="rule-outbound" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Route to Outbound <span class="text-red-500">*</span></label>
-                    <select id="rule-outbound" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+                <div id="rule-outbound-group">
+                    <label for="rule-outbound" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Outbound</label>
+                    <select id="rule-outbound" onchange="updateRuleActionFields()" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
                         <option value="">Select outbound...</option>
                     </select>
                 </div>
