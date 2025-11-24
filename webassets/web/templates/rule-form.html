@@ -75,7 +75,7 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {{range .Form.Fields}}
                                 {{if has .Name $actionFields}}
-                                    {{template "field-template" .}}
+                                    {{template "components/field-template.html" .}}
                                 {{end}}
                             {{end}}
                         </div>
@@ -92,7 +92,7 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {{range .Form.Fields}}
                                 {{if has .Name $networkFields}}
-                                    {{template "field-template" .}}
+                                    {{template "components/field-template.html" .}}
                                 {{end}}
                             {{end}}
                         </div>
@@ -109,7 +109,7 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {{range .Form.Fields}}
                                 {{if has .Name $domainFields}}
-                                    {{template "field-template" .}}
+                                    {{template "components/field-template.html" .}}
                                 {{end}}
                             {{end}}
                         </div>
@@ -126,7 +126,7 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {{range .Form.Fields}}
                                 {{if has .Name $ipFields}}
-                                    {{template "field-template" .}}
+                                    {{template "components/field-template.html" .}}
                                 {{end}}
                             {{end}}
                         </div>
@@ -143,7 +143,7 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {{range .Form.Fields}}
                                 {{if has .Name $portFields}}
-                                    {{template "field-template" .}}
+                                    {{template "components/field-template.html" .}}
                                 {{end}}
                             {{end}}
                         </div>
@@ -160,7 +160,7 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {{range .Form.Fields}}
                                 {{if has .Name $processFields}}
-                                    {{template "field-template" .}}
+                                    {{template "components/field-template.html" .}}
                                 {{end}}
                             {{end}}
                         </div>
@@ -177,7 +177,7 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {{range .Form.Fields}}
                                 {{if has .Name $deviceFields}}
-                                    {{template "field-template" .}}
+                                    {{template "components/field-template.html" .}}
                                 {{end}}
                             {{end}}
                         </div>
@@ -195,7 +195,7 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {{range .Form.Fields}}
                                 {{if has .Name $advancedFields}}
-                                    {{template "field-template" .}}
+                                    {{template "components/field-template.html" .}}
                                 {{end}}
                             {{end}}
                         </div>
@@ -225,79 +225,6 @@
         </form>
     </div>
 </div>
-
-<!-- Field Template -->
-{{define "field-template"}}
-<div class="form-group" data-field="{{.JSONTag}}" data-label="{{.Label}}">
-    <label for="{{.JSONTag}}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-        {{.Label}}
-        {{if .Required}}<span class="text-red-500">*</span>{{end}}
-    </label>
-
-    <div class="mt-1">
-    {{if eq .Type "checkbox"}}
-        <div class="flex items-center">
-            <input type="checkbox" name="{{.JSONTag}}" id="{{.JSONTag}}" class="rounded h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500" {{if .Value}}checked{{end}}>
-            <label for="{{.JSONTag}}" class="ml-2 text-sm text-gray-600 dark:text-gray-400">Enable</label>
-        </div>
-    {{else if eq .Type "select"}}
-        <select name="{{.JSONTag}}" id="{{.JSONTag}}" class="block w-full px-3 py-2 text-base border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-md" {{if eq .JSONTag "action"}}onchange="updateActionFields()"{{end}}>
-            <option value="">-- Select --</option>
-            {{range .Options}}
-            <option value="{{.}}" {{if eq . $.Value}}selected{{end}}>{{.}}</option>
-            {{end}}
-        </select>
-    {{else if eq .Type "textarea"}}
-        <textarea name="{{.JSONTag}}" id="{{.JSONTag}}" rows="3" class="block w-full px-3 py-2 shadow-sm text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="{{.Placeholder}}">{{.Value}}</textarea>
-    {{else if eq .Type "array"}}
-        <div class="space-y-2" id="array-{{.JSONTag}}">
-            {{$field := .}}
-            {{if .Values}}
-                {{range .Values}}
-                <div class="flex items-center space-x-2">
-                    {{if $field.Options}}
-                    <select name="{{$field.JSONTag}}[]" class="block w-full px-3 py-2 text-base border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-md">
-                        <option value="">-- Select --</option>
-                        {{$currentValue := .}}
-                        {{range $field.Options}}
-                        <option value="{{.}}" {{if eq . $currentValue}}selected{{end}}>{{.}}</option>
-                        {{end}}
-                    </select>
-                    {{else}}
-                    <input type="text" name="{{$field.JSONTag}}[]" value="{{.}}" placeholder="{{if $field.Placeholder}}{{$field.Placeholder}}{{else}}Enter value{{end}}" class="block w-full px-3 py-2 shadow-sm text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                    {{end}}
-                    <button type="button" class="flex-shrink-0 bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-3 rounded transition-colors" onclick="removeArrayField(this)">−</button>
-                </div>
-                {{end}}
-            {{else}}
-                <div class="flex items-center space-x-2">
-                    {{if .Options}}
-                    <select name="{{.JSONTag}}[]" class="block w-full px-3 py-2 text-base border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-md">
-                        <option value="">-- Select --</option>
-                        {{range .Options}}
-                        <option value="{{.}}">{{.}}</option>
-                        {{end}}
-                    </select>
-                    {{else}}
-                    <input type="text" name="{{.JSONTag}}[]" placeholder="{{if .Placeholder}}{{.Placeholder}}{{else}}Enter value{{end}}" class="block w-full px-3 py-2 shadow-sm text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                    {{end}}
-                    <button type="button" class="flex-shrink-0 bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-3 rounded transition-colors" onclick="removeArrayField(this)">−</button>
-                </div>
-            {{end}}
-        </div>
-        <button type="button" class="mt-2 bg-blue-500 hover:bg-blue-600 text-white font-medium py-1.5 px-3 rounded text-sm transition-colors" onclick="addArrayField('array-{{.JSONTag}}', '{{.JSONTag}}', '{{if .Placeholder}}{{.Placeholder}}{{else}}Enter value{{end}}', {{if .Options}}true{{else}}false{{end}}, {{if .Options}}[{{range $i, $opt := .Options}}{{if $i}},{{end}}'{{$opt}}'{{end}}]{{else}}[]{{end}})">+ Add</button>
-    {{else if eq .Type "number"}}
-        <input type="number" name="{{.JSONTag}}" id="{{.JSONTag}}" value="{{.Value}}" placeholder="{{.Placeholder}}" class="block w-full px-3 py-2 shadow-sm text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-    {{else}}
-        <input type="text" name="{{.JSONTag}}" id="{{.JSONTag}}" value="{{.Value}}" placeholder="{{.Placeholder}}" class="block w-full px-3 py-2 shadow-sm text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-    {{end}}
-    </div>
-
-    {{if .Description}}
-    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{.Description}}</p>
-    {{end}}
-</div>
-{{end}}
 
 <script>
 const actionFieldMap = {
