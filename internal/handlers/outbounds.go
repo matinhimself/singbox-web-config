@@ -44,20 +44,15 @@ func (s *Server) handleOutboundsList(w http.ResponseWriter, r *http.Request) {
 // handleOutboundForm handles the HTMX endpoint for outbound forms
 func (s *Server) handleOutboundForm(w http.ResponseWriter, r *http.Request) {
 	outboundType := r.URL.Query().Get("type")
-	indexStr := r.URL.Query().Get("index")
-	editMode := indexStr != ""
+	tagToEdit := r.URL.Query().Get("tag")
+	editMode := tagToEdit != ""
 
 	var outboundData map[string]interface{}
 	var originalTag string
 
 	if editMode {
+		originalTag = tagToEdit
 		// Get existing outbound for editing
-		index, err := strconv.Atoi(indexStr)
-		if err != nil {
-			http.Error(w, "Invalid index", http.StatusBadRequest)
-			return
-		}
-
 		outbounds, err := s.configManager.GetOutbounds()
 		if err != nil {
 			log.Printf("Error getting outbounds: %v", err)
@@ -65,26 +60,27 @@ func (s *Server) handleOutboundForm(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if index < 0 || index >= len(outbounds) {
-			http.Error(w, "Index out of range", http.StatusBadRequest)
+		found := false
+		for _, outbound := range outbounds {
+			if outboundMap, ok := outbound.(map[string]interface{}); ok {
+				if tag, ok := outboundMap["tag"].(string); ok && tag == tagToEdit {
+					outboundData = outboundMap
+					found = true
+					break
+				}
+			}
+		}
+
+		if !found {
+			http.Error(w, "Outbound not found", http.StatusBadRequest)
 			return
 		}
 
-		// Convert outbound to map
-		if outbound, ok := outbounds[index].(map[string]interface{}); ok {
-			outboundData = outbound
-			if tag, ok := outbound["tag"].(string); ok {
-				originalTag = tag
+		// Get type from outbound data
+		if outboundType == "" {
+			if t, ok := outboundData["type"].(string); ok {
+				outboundType = t
 			}
-			// Get type from outbound data
-			if outboundType == "" {
-				if t, ok := outbound["type"].(string); ok {
-					outboundType = t
-				}
-			}
-		} else {
-			http.Error(w, "Invalid outbound format", http.StatusInternalServerError)
-			return
 		}
 	}
 
@@ -343,22 +339,14 @@ func (s *Server) handleOutboundDelete(w http.ResponseWriter, r *http.Request) {
 
 // handleOutboundReorder handles reordering outbounds (drag-and-drop)
 func (s *Server) handleOutboundReorder(w http.ResponseWriter, r *http.Request) {
-	fromStr := r.URL.Query().Get("from")
-	toStr := r.URL.Query().Get("to")
+	fromTag := r.URL.Query().Get("fromTag")
+	toTag := r.URL.Query().Get("toTag")
 
-	from, err := strconv.Atoi(fromStr)
-	if err != nil {
-		http.Error(w, "Invalid from index", http.StatusBadRequest)
+	if fromTag == "" || toTag == "" {
+		http.Error(w, "Invalid from or to tag", http.StatusBadRequest)
 		return
 	}
 
-	to, err := strconv.Atoi(toStr)
-	if err != nil {
-		http.Error(w, "Invalid to index", http.StatusBadRequest)
-		return
-	}
-
-	// Get current outbounds
 	outbounds, err := s.configManager.GetOutbounds()
 	if err != nil {
 		log.Printf("Error getting outbounds: %v", err)
@@ -366,18 +354,33 @@ func (s *Server) handleOutboundReorder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if from < 0 || from >= len(outbounds) || to < 0 || to >= len(outbounds) {
-		http.Error(w, "Index out of range", http.StatusBadRequest)
+	fromIndex := -1
+	toIndex := -1
+	for i, o := range outbounds {
+		if ob, ok := o.(map[string]interface{}); ok {
+			if tag, ok := ob["tag"].(string); ok {
+				if tag == fromTag {
+					fromIndex = i
+				}
+				if tag == toTag {
+					toIndex = i
+				}
+			}
+		}
+	}
+
+	if fromIndex == -1 || toIndex == -1 {
+		http.Error(w, "Could not find outbounds to reorder", http.StatusBadRequest)
 		return
 	}
 
 	// Reorder
-	item := outbounds[from]
-	outbounds = append(outbounds[:from], outbounds[from+1:]...)
-	if to > from {
-		to--
+	item := outbounds[fromIndex]
+	outbounds = append(outbounds[:fromIndex], outbounds[fromIndex+1:]...)
+	if toIndex > fromIndex {
+		toIndex--
 	}
-	outbounds = append(outbounds[:to], append([]interface{}{item}, outbounds[to:]...)...)
+	outbounds = append(outbounds[:toIndex], append([]interface{}{item}, outbounds[toIndex:]...)...)
 
 	// Save updated outbounds
 	if err := s.configManager.UpdateOutbounds(outbounds); err != nil {
@@ -429,10 +432,9 @@ func (s *Server) handleOutboundRename(w http.ResponseWriter, r *http.Request) {
 
 // handleGroupManage handles managing outbound groups (selector/urltest)
 func (s *Server) handleGroupManage(w http.ResponseWriter, r *http.Request) {
-	indexStr := r.URL.Query().Get("index")
-	index, err := strconv.Atoi(indexStr)
-	if err != nil {
-		http.Error(w, "Invalid index", http.StatusBadRequest)
+	tagToManage := r.URL.Query().Get("tag")
+	if tagToManage == "" {
+		http.Error(w, "Invalid tag", http.StatusBadRequest)
 		return
 	}
 
@@ -443,14 +445,21 @@ func (s *Server) handleGroupManage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if index < 0 || index >= len(outbounds) {
-		http.Error(w, "Index out of range", http.StatusBadRequest)
-		return
+	var outbound map[string]interface{}
+	var outboundIndex int = -1
+
+	for i, o := range outbounds {
+		if ob, ok := o.(map[string]interface{}); ok {
+			if tag, ok := ob["tag"].(string); ok && tag == tagToManage {
+				outbound = ob
+				outboundIndex = i
+				break
+			}
+		}
 	}
 
-	outbound, ok := outbounds[index].(map[string]interface{})
-	if !ok {
-		http.Error(w, "Invalid outbound format", http.StatusInternalServerError)
+	if outboundIndex == -1 {
+		http.Error(w, "Outbound group not found", http.StatusBadRequest)
 		return
 	}
 
@@ -488,7 +497,7 @@ func (s *Server) handleGroupManage(w http.ResponseWriter, r *http.Request) {
 
 	data := map[string]interface{}{
 		"Outbound":           outbound,
-		"Index":              index,
+		"Index":              outboundIndex,
 		"GroupMembers":       groupMembers,
 		"AvailableOutbounds": availableOutbounds,
 	}
@@ -506,10 +515,9 @@ func (s *Server) handleGroupUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	indexStr := r.FormValue("index")
-	index, err := strconv.Atoi(indexStr)
-	if err != nil {
-		http.Error(w, "Invalid index", http.StatusBadRequest)
+	tagToUpdate := r.FormValue("tag")
+	if tagToUpdate == "" {
+		http.Error(w, "Invalid tag", http.StatusBadRequest)
 		return
 	}
 
@@ -527,14 +535,20 @@ func (s *Server) handleGroupUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if index < 0 || index >= len(outbounds) {
-		http.Error(w, "Index out of range", http.StatusBadRequest)
-		return
+	var outbound map[string]interface{}
+	var outboundIndex = -1
+	for i, o := range outbounds {
+		if ob, ok := o.(map[string]interface{}); ok {
+			if tag, ok := ob["tag"].(string); ok && tag == tagToUpdate {
+				outbound = ob
+				outboundIndex = i
+				break
+			}
+		}
 	}
 
-	outbound, ok := outbounds[index].(map[string]interface{})
-	if !ok {
-		http.Error(w, "Invalid outbound format", http.StatusInternalServerError)
+	if outboundIndex == -1 {
+		http.Error(w, "Outbound group not found", http.StatusBadRequest)
 		return
 	}
 
@@ -544,6 +558,11 @@ func (s *Server) handleGroupUpdate(w http.ResponseWriter, r *http.Request) {
 		memberInterfaces = append(memberInterfaces, m)
 	}
 	outbound["outbounds"] = memberInterfaces
+
+	// Also update other group settings like default for selector
+	if defaultOutbound := r.FormValue("default"); defaultOutbound != "" {
+		outbound["default"] = defaultOutbound
+	}
 
 	// Save updated outbounds
 	if err := s.configManager.UpdateOutbounds(outbounds); err != nil {

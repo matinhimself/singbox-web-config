@@ -18,7 +18,7 @@
               onsubmit="return validateForm(event)">
 
             {{if .EditMode}}
-            <input type="hidden" name="index" value="{{.OutboundIndex}}">
+            <input type="hidden" name="original_tag" value="{{.OriginalTag}}">
             {{end}}
 
             <!-- Outbound Type Selection -->
